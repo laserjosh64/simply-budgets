@@ -486,7 +486,6 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       <div id="homeMain">
         <div id="weekly" class="weekly" hidden></div>
         <div id="payCard" class="card pad paycard" hidden></div>
-        <div id="sweepCard" class="card pad paycard" hidden></div>
         <div class="hero">
           <div class="label-row">Spending money left
             <button class="info" type="button" aria-label="About spending money" data-tip="Money left in your spending categories this month, minus what you’ve logged. Gas, bills, sub-goals, and savings are tracked on their own below.">i</button>
@@ -534,6 +533,15 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       <div class="card">
         <div id="bills"></div>
         <button class="lrow addrow" id="addBill"><span class="ico">+</span><span class="mid">Add a recurring payment</span></button>
+      </div>
+
+      <div class="section-row"><h3>Student loans
+        <button class="info" type="button" aria-label="About student loans" data-tip="The payment comes off the top of your paycheck like your other recurring payments. Each month on the payment day, interest is added to the balance and then the payment comes off, so the balance stays current on its own.">i</button></h3>
+        <span class="aside" id="loanTotal"></span>
+      </div>
+      <div class="card">
+        <div id="loans"></div>
+        <button class="lrow addrow" id="addLoan"><span class="ico">+</span><span class="mid">Add a student loan</span></button>
       </div>
 
       <div class="section-row"><h3>Categories
@@ -732,9 +740,9 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
         <div id="catFixedWrap" hidden><span class="field amt wide" style="margin-top:8px"><span>$</span><input id="catFixedAmt" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount per month"><span class="unit">/mo</span></span></div></div>
       <div class="mrow" id="catAcctRow"><div class="label-row">Money goes into</div><div class="chips" id="catAcct"></div></div>
       <div class="mrow" id="catRollRow"><div class="label-row" style="display:flex;align-items:center;gap:8px">What’s left at month end
-        <button class="info" type="button" aria-label="About what’s left" data-tip="Starts fresh: each month resets. Rolls over: unspent money carries into next month, and overspending carries too, so next month starts with less. Moves to an account: at the start of each month you’re asked to move what’s left into the account you pick.">i</button></div>
+        <button class="info" type="button" aria-label="About what’s left" data-tip="Starts fresh: each month resets. Rolls over: unspent money carries into next month, and overspending carries too, so next month starts with less. Moves to savings: what’s left is added to next month’s amount to move into the saving category you pick.">i</button></div>
         <div class="chips" id="catLeft"></div>
-        <div id="catSweepWrap" hidden><div class="label-row" style="margin-top:12px">Move it into</div><div class="chips" id="catSweepTo"></div></div></div>
+        <div id="catSweepWrap" hidden><div class="label-row" style="margin-top:12px">Add it to next month’s</div><div class="chips" id="catSweepTo"></div></div></div>
       <div id="catPicker"></div>
     </div>
     <button class="btn" id="catSave" style="margin-top:16px">Save changes</button>
@@ -759,6 +767,22 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     <div class="card pad gap" id="gPreview"></div>
     <button class="btn" id="gSave" style="margin-top:16px">Add goal</button>
     <button class="btn outline" id="gRemove">Remove this goal</button>
+  </div>
+</div>
+
+<div class="modal" id="loanModal" role="dialog" aria-modal="true" aria-labelledby="loanTitle">
+  <div class="in">
+    <div class="mhead"><h2 id="loanTitle">New student loan</h2><button class="x" id="loanClose" aria-label="Close">×</button></div>
+    <div class="card pad">
+      <div class="label-row">Name</div><span class="field" style="margin:8px 0 14px"><input id="lName" autocomplete="off" placeholder="Federal loan, Sallie Mae" aria-label="Loan name"></span>
+      <div class="label-row">Balance today</div><span class="field amt wide" style="margin:8px 0 14px"><span>$</span><input id="lBal" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Balance today"></span>
+      <div class="label-row">Interest rate (APR)</div><span class="field amt" style="margin:8px 0 14px"><input id="lApr" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Interest rate"><span>%</span></span>
+      <div class="label-row">Monthly payment</div><span class="field amt wide" style="margin:8px 0 14px"><span>$</span><input id="lPay" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Monthly payment"></span>
+      <div class="label-row">Taken out on day</div><span class="field amt" style="margin-top:8px"><input id="lDay" inputmode="numeric" autocomplete="off" placeholder="1" aria-label="Day of the month the payment comes out"></span>
+      <p class="gline" id="lPreview" style="margin:14px 0 0"></p>
+    </div>
+    <button class="btn" id="lSave" style="margin-top:16px">Add loan</button>
+    <button class="btn outline" id="lRemove">Remove this loan</button>
   </div>
 </div>
 
@@ -833,7 +857,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     return {
       v:2, name:"", pay:{ amount:"", freq:"month", deductions:[] }, plan:defaultPlan(), segDefs:{},
       acct:{ checking:"", savings:"", emergency:"", card:"", payday:"", cardDue:"", notes:"", updated:null, confirmedAt:{}, spendFrom:"checking", cardApr:"", cardMin:"", lastPay:"" },
-      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, sweepDone:{}, transfers:[], installDismissed:false
+      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, transfers:[], installDismissed:false
     };
   }
   function load(){
@@ -868,7 +892,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       if(!Array.isArray(proj.years) || proj.years.length !== 3) proj.years = ["","",""];
       return {
         v:2, name:s.name || "", pay:(function(){ var pp = Object.assign(d.pay, s.pay || {}); if(!Array.isArray(pp.deductions)) pp.deductions = []; return pp; })(), plan:plan, segDefs:s.segDefs || {},
-        acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, sweepDone:s.sweepDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [],
+        acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [],
         history:Array.isArray(s.history) ? s.history : [], saved:Array.isArray(s.saved) ? s.saved : [],
         proj:proj, monthPlans:s.monthPlans || {}, autoSkips:s.autoSkips || {}, recon:Object.assign({ last:null, snooze:null }, s.recon || {}), bankHist:Array.isArray(s.bankHist) ? s.bankHist : [], seenTx:s.seenTx || {}, rules:s.rules || {}, recDismiss:s.recDismiss || {}, ocr:Object.assign({ names:{}, items:{}, totals:{} }, s.ocr || {}), installDismissed:!!s.installDismissed
       };
@@ -934,7 +958,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   function calc(){
     var p = P();
     var monthly = netPerPaycheck() * (FREQ[state.pay.freq] || 1);
-    var gas = 0, bills = p.bills.reduce(function(a,b){ return a + (isPaycheckBill(b) ? num(b.amount) : 0); }, 0);
+    var gas = 0, bills = p.bills.reduce(function(a,b){ return a + (isPaycheckBill(b) ? billAmt(b) : 0); }, 0);
     var keys = splitKeys(), amt = { bills:bills }, sub = {}, fixedCats = 0;
     keys.forEach(function(k){ if(isFixed(k)){ amt[k] = num(p.fixed[k]); fixedCats += amt[k]; } });
     var fixed = bills + fixedCats, left = Math.max(0, monthly - fixed), totalPct = sumPct(keys);
@@ -1056,7 +1080,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var cr = isSave ? 0 : carryFor(k, LC || calc());
     if(Math.abs(cr) > 0.5) sub += cr > 0 ? ", " + fmt(cr) + " rolled over" : ", " + fmt(-cr) + " short from last month";
     var swp = !isSave && (P().sweep || {})[k];
-    if(swp && swp.to) sub += ", leftover to " + (ACCT_NAMES[swp.to] || "Savings").toLowerCase();
+    if(swp && swp.to) sub += ", leftover to " + segName(swp.to);
+    if(isSave){ var sin = sweepParts(k, LC || calc()); if(sin.length) sub += ", includes " + sin.map(function(x){ return fmt(x.amount) + " left from " + segName(x.k); }).join(" and "); }
     return '<button class="lrow' + (over ? " over" : "") + '" data-log="' + k + '" aria-label="Log ' + esc(segName(k)) + '">' +
       '<span class="ico" style="--c:' + m.color + '">' + m.e + '</span>' +
       '<span class="mid" style="--c:' + m.color + '"><strong>' + esc(segName(k)) + '</strong><small>' + sub + '</small><span class="mini"><i style="width:' + pct.toFixed(1) + '%"></i></span></span>' +
@@ -1100,7 +1125,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#heroFill").style.width = (budget > 0 ? Math.max(0, Math.min(100, left / budget * 100)) : 0) + "%";
     var pd = daysUntil(state.acct.payday);
     $("#heroPay").textContent = pd !== null && pd > 0 ? "Payday " + (pd === 1 ? "tomorrow" : "in " + pd + " days") + (left > 0 ? ", about " + fmt(left / pd) + " a day until then." : ".") : "";
-    renderPayCard(c); renderSweepCard(c);
+    renderPayCard(c);
     $("#homeCats").innerHTML = spendCats().map(function(k){
       return topRow(k, B(k), S(k), subsOf(k).length > 0) + subsOf(k).map(function(s){
         return subRow(k, s, (c.sub[k] || {})[s.id] || 0, (sp[k] && sp[k].subs[s.id]) || 0);
@@ -1196,7 +1221,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
 
 
   function renderBills(){
-    $("#bills").innerHTML = P().bills.map(function(b){
+    renderLoans();
+    $("#bills").innerHTML = P().bills.filter(function(b){ return !b.loan; }).map(function(b){
       var bm = isPaycheckBill(b) ? BUILTIN.bills : segMeta(b.from);
       return '<div class="lrow" data-id="' + b.id + '"><span class="ico" style="--c:' + bm.color + '">' + initial(b.name || "Bill") + '</span>' +
         '<span class="mid"><input class="name-input" data-k="name" autocomplete="off" placeholder="Name, like Phone or Netflix" aria-label="Payment name" value="' + esc(b.name) + '">' +
@@ -2354,7 +2380,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var changed = false, keys = splitKeys(), live = {};
     P().bills.forEach(function(b){
       var cat = isPaycheckBill(b) ? "bills" : b.from;
-      var amt = Math.round(num(b.amount) * 100) / 100; if(amt <= 0) return;
+      var amt = Math.round(billAmt(b) * 100) / 100; if(amt <= 0) return;
       if(!b.since) b.since = thisMonth;
       live[b.id] = 1;
       var m = b.since || thisMonth, guard = 0;
@@ -2424,6 +2450,79 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     });
   }
 
+  /* ---------- student loans ---------- */
+  function loanDay(b, ym){ var dim = new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate(); return ym + "-" + pad(Math.min(Math.max(1, +b.day || 1), dim)); }
+  // Walks the loan from the day its balance was entered: each payment day adds a month of interest, then takes the payment.
+  function loanInfo(b){
+    var L = b.loan || {}, apr = num(L.apr), pay = num(b.amount), bal = num(L.bal), asOf = L.asOf || todayStr(), today = todayStr();
+    var m = monthOf(asOf), guard = 0, out = { payThis:monthOf(asOf) === thisMonth && bal > 0 ? pay : 0, intThis:0 };
+    while(m <= thisMonth && guard++ < 600){
+      var d = loanDay(b, m);
+      if(d > asOf){
+        if(d > today && m !== thisMonth) break;
+        var i = bal * apr / 1200, p = Math.min(pay, bal + i);
+        if(m === thisMonth){ out.payThis = bal > 0.004 ? p : 0; out.intThis = i; }
+        if(d <= today) bal = bal + i - p;
+      }
+      m = shiftMonth(m, 1);
+    }
+    out.bal = Math.max(0, Math.round(bal * 100) / 100);
+    var f = out.bal, n = 0, interest = 0;
+    while(f > 0.004 && n < 600){ var fi = f * apr / 1200; if(pay <= fi){ n = null; break; } interest += fi; f = f + fi - pay; n++; }
+    out.months = n; out.interestLeft = interest;
+    return out;
+  }
+  function billAmt(b){ return b.loan ? Math.round(loanInfo(b).payThis * 100) / 100 : num(b.amount); }
+  function loanBills(){ return P().bills.filter(function(b){ return b.loan; }); }
+  function renderLoans(){
+    var ls = loanBills(), owed = 0;
+    $("#loans").innerHTML = ls.map(function(b){
+      var r = loanInfo(b); owed += r.bal;
+      var line = num(b.loan.apr) + "% APR, " + fmt(num(b.amount)) + "/mo";
+      if(r.bal <= 0.004) line = "Paid off";
+      else if(r.months == null) line += ", payment doesn’t cover the interest";
+      else line += ", paid off around " + addMonthsLabel(r.months);
+      return '<button class="lrow" data-loan="' + b.id + '"><span class="ico" style="--c:var(--bills)">' + initial(b.name || "Loan") + '</span>' +
+        '<span class="mid"><strong>' + esc(b.name || "Student loan") + '</strong><small style="white-space:normal">' + esc(line) + '</small></span>' +
+        '<span class="right">' + fmt2(r.bal) + '<small>owed</small></span></button>';
+    }).join("");
+    $("#loanTotal").textContent = ls.length ? fmt(owed) + " owed" : "";
+  }
+  var lDraft = null, lRemoveArmed = false;
+  function openLoan(id){
+    var b = id ? P().bills.find(function(x){ return x.id === id; }) : null;
+    lDraft = b ? { id:b.id, name:b.name, bal:String(loanInfo(b).bal), apr:b.loan.apr, pay:b.amount, day:b.day || 1 } : { id:null, name:"", bal:"", apr:"", pay:"", day:"" };
+    lRemoveArmed = false;
+    $("#loanTitle").textContent = b ? "Edit student loan" : "New student loan";
+    $("#lSave").textContent = b ? "Save changes" : "Add loan";
+    $("#lRemove").hidden = !b; $("#lRemove").textContent = "Remove this loan"; $("#lRemove").classList.remove("armed");
+    $("#lName").value = lDraft.name || ""; $("#lBal").value = lDraft.bal || ""; $("#lApr").value = lDraft.apr || ""; $("#lPay").value = lDraft.pay || ""; $("#lDay").value = lDraft.day || "";
+    loanPreview(); openModal("#loanModal");
+  }
+  function loanPreview(){
+    var bal = num($("#lBal").value), apr = num($("#lApr").value), pay = num($("#lPay").value), i = bal * apr / 1200, t = "";
+    if(bal > 0 && apr > 0) t = "About " + fmt2(i) + " in interest is added next month.";
+    if(bal > 0 && pay > 0 && pay <= i) t += " That payment doesn’t cover the interest, so the balance will grow.";
+    $("#lPreview").textContent = t;
+  }
+  ["#lBal","#lApr","#lPay"].forEach(function(sel){ $(sel).addEventListener("input", loanPreview); });
+  $("#addLoan").addEventListener("click", function(){ openLoan(null); });
+  document.addEventListener("click", function(e){ var b = e.target.closest("[data-loan]"); if(b) openLoan(b.dataset.loan); });
+  $("#loanClose").addEventListener("click", function(){ closeModal("#loanModal"); });
+  $("#lSave").addEventListener("click", function(){
+    var d = lDraft, bal = $("#lBal").value.trim(), b = d.id ? P().bills.find(function(x){ return x.id === d.id; }) : null;
+    if(!b){ b = { id:uid(), from:"paycheck", since:thisMonth, loan:{} }; P().bills.push(b); }
+    b.name = $("#lName").value.trim() || "Student loan"; b.amount = $("#lPay").value.trim(); b.day = Math.min(31, Math.max(1, Math.round(num($("#lDay").value)) || 1));
+    b.loan.apr = $("#lApr").value.trim();
+    if(!d.id || num(bal) !== num(d.bal)){ b.loan.bal = bal; b.loan.asOf = todayStr(); }
+    commit(); closeModal("#loanModal"); renderBills(); update(); toast(d.id ? "Saved " + b.name + "." : "Added " + b.name + ".");
+  });
+  $("#lRemove").addEventListener("click", function(){
+    if(!lRemoveArmed){ lRemoveArmed = true; $("#lRemove").textContent = "Tap again to remove"; $("#lRemove").classList.add("armed"); return; }
+    var id = lDraft.id; P().bills = P().bills.filter(function(x){ return x.id !== id; });
+    commit(); closeModal("#loanModal"); renderBills(); update(); toast("Loan removed.", "Undo", revert);
+  });
+
   /* ---------- category editor ---------- */
   var catDraft = null, catRemoveArmed = false;
   function openCatEditor(k){
@@ -2450,9 +2549,12 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#catBudget").innerHTML = [["pct","Share of what’s left"],["fixed","Set amount"]].map(function(x){ return '<button class="chip" data-budget="' + x[0] + '" aria-pressed="' + ((x[0] === "fixed") === d.fixed) + '">' + x[1] + '</button>'; }).join("");
     $("#catFixedWrap").hidden = !d.fixed;
     var leftMode = d.sweep ? "move" : d.roll ? "roll" : "fresh";
-    $("#catLeft").innerHTML = [["fresh","Starts fresh"],["roll","Rolls over"],["move","Moves to an account"]].map(function(x){ return '<button class="chip" data-left="' + x[0] + '" aria-pressed="' + (x[0] === leftMode) + '">' + x[1] + '</button>'; }).join("");
+    $("#catLeft").innerHTML = [["fresh","Starts fresh"],["roll","Rolls over"],["move","Moves to savings"]].map(function(x){ return '<button class="chip" data-left="' + x[0] + '" aria-pressed="' + (x[0] === leftMode) + '">' + x[1] + '</button>'; }).join("");
     $("#catSweepWrap").hidden = leftMode !== "move";
-    $("#catSweepTo").innerHTML = SWEEP_TO.map(function(x){ return '<button class="chip" data-sweepto="' + x + '" aria-pressed="' + (d.sweep === x) + '">' + ACCT_NAMES[x] + '</button>'; }).join("");
+    var targets = sweepTargets();
+    if(leftMode === "move" && targets.indexOf(d.sweep) < 0) d.sweep = targets[0] || "";
+    $("#catSweepTo").innerHTML = targets.length ? targets.map(function(x){ return '<button class="chip" data-sweepto="' + x + '" aria-pressed="' + (d.sweep === x) + '">' + esc(segMeta(x).name) + '</button>'; }).join("")
+      : '<p class="gline" style="margin:8px 0 0">Add a Saving category first.</p>';
     if(full) $("#catPicker").innerHTML = pickerHTML(d.icon, d.color);
     else {
       document.querySelectorAll("#catPicker [data-color]").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.color === d.color); });
@@ -2466,7 +2568,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   $("#catAcct").addEventListener("click", function(e){ var b = e.target.closest("[data-acctto]"); if(!b) return; catDraft.account = b.dataset.acctto; renderCatEditor(false); });
   $("#catLeft").addEventListener("click", function(e){
     var b = e.target.closest("[data-left]"); if(!b) return; var v = b.dataset.left;
-    catDraft.roll = v === "roll"; catDraft.sweep = v === "move" ? (catDraft.sweep || "savings") : "";
+    catDraft.roll = v === "roll"; catDraft.sweep = v === "move" ? (catDraft.sweep || sweepTargets()[0] || "") : "";
     renderCatEditor(false);
   });
   $("#catSweepTo").addEventListener("click", function(e){ var b = e.target.closest("[data-sweepto]"); if(!b) return; catDraft.sweep = b.dataset.sweepto; renderCatEditor(false); });
@@ -2491,7 +2593,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     P().roll = P().roll || {};
     if(d.roll && !P().roll[k]) P().roll[k] = thisMonth; else if(!d.roll) delete P().roll[k];
     P().sweep = P().sweep || {};
-    if(d.save || !d.sweep || k === "bills") delete P().sweep[k];
+    if(d.save || !d.sweep || k === "bills" || sweepTargets().indexOf(d.sweep) < 0) delete P().sweep[k];
     else if(!P().sweep[k]) P().sweep[k] = { to:d.sweep, from:thisMonth };
     else P().sweep[k].to = d.sweep;
     commit(); save(); closeModal("#catModal"); renderBills(); renderSplits(); update();
@@ -2505,7 +2607,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   function removeCategory(k){
     var nm = segMeta(k).name;
     P().keys = P().keys.filter(function(x){ return x !== k; });
-    delete P().split[k]; delete P().subs[k]; if(P().fixed) delete P().fixed[k]; if(P().roll) delete P().roll[k]; if(P().sweep) delete P().sweep[k];
+    delete P().split[k]; delete P().subs[k]; if(P().fixed) delete P().fixed[k]; if(P().roll) delete P().roll[k]; if(P().sweep){ delete P().sweep[k]; for(var sk in P().sweep){ if(P().sweep[sk].to === k) delete P().sweep[sk]; } }
     P().bills.forEach(function(b){ if(b.from === k) b.from = "paycheck"; });
     commit(); renderBills(); renderSplits(); update();
     toast("Removed " + nm + ".", "Undo", revert);
@@ -2589,7 +2691,12 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   }
   function paydayMoves(c){
     var share = c.monthly > 0 ? perPaycheck() / c.monthly : 0;
-    return splitKeys().filter(function(k){ return segMeta(k).save && (c.amt[k] || 0) > 0; }).map(function(k){ return { k:k, amount:Math.round((c.amt[k] || 0) * share * 100) / 100 }; });
+    var sp = spentIn(thisMonth);
+    return splitKeys().filter(function(k){ return segMeta(k).save; }).map(function(k){
+      var extra = sweepIn(k, c), moved = sp[k] ? sp[k].total : 0, total = (c.amt[k] || 0) + extra;
+      var amt = Math.min(Math.max(0, total - moved), (c.amt[k] || 0) * share + Math.max(0, extra - moved));
+      return { k:k, amount:Math.round(amt * 100) / 100 };
+    }).filter(function(mv){ return mv.amount > 0; });
   }
   function renderPayCard(c){
     var el = $("#payCard"), last = state.acct.lastPay, show = false;
@@ -2617,7 +2724,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   /* ---------- rollover ---------- */
   var carryCache = {};
   function carryFor(k, c){
-    var start = (P().roll || {})[k]; if(!start || segMeta(k).save) return 0;
+    if(segMeta(k).save) return Math.round(sweepIn(k, c) * 100) / 100;
+    var start = (P().roll || {})[k]; if(!start) return 0;
     if(carryCache[k] != null) return carryCache[k];
     var carry = 0, m = start, guard = 0;
     while(m < thisMonth && guard++ < 60){
@@ -2628,46 +2736,20 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     return (carryCache[k] = Math.round(carry * 100) / 100);
   }
 
-  /* ---------- leftovers moved to an account ---------- */
-  var SWEEP_TO = ["savings","emergency"];
+  /* ---------- leftovers moved into a saving category ---------- */
   function budgetIn(m, k, c){ var mp = state.monthPlans[m]; return mp && mp.budgets && mp.budgets[k] != null ? mp.budgets[k] : (c.amt[k] || 0); }
-  // Finished months whose leftover hasn't been moved or skipped yet.
-  function pendingSweeps(c){
-    var out = [], sw = P().sweep || {}, done = state.sweepDone || {};
-    splitKeys().forEach(function(k){
-      var cfg = sw[k]; if(!cfg || !cfg.to || segMeta(k).save) return;
-      var m = cfg.from, guard = 0;
-      while(m < thisMonth && guard++ < 24){
-        if(!done[k + "|" + m]){
-          var sp = spentIn(m)[k], left = Math.round((budgetIn(m, k, c) - (sp ? sp.total : 0)) * 100) / 100;
-          if(left > 0.5) out.push({ k:k, m:m, to:cfg.to, amount:left });
-        }
-        m = shiftMonth(m, 1);
-      }
+  function sweepTargets(){ return splitKeys().filter(function(k){ return segMeta(k).save; }); }
+  // Last month's unspent money from categories set to move it into saving category k.
+  function sweepParts(k, c){
+    var prev = shiftMonth(thisMonth, -1), sw = P().sweep || {}, out = [];
+    splitKeys().forEach(function(s){
+      var cfg = sw[s]; if(!cfg || cfg.to !== k || segMeta(s).save || !(cfg.from <= prev)) return;
+      var sp = spentIn(prev)[s], left = Math.round((budgetIn(prev, s, c) - (sp ? sp.total : 0)) * 100) / 100;
+      if(left > 0.004) out.push({ k:s, amount:left });
     });
     return out;
   }
-  function monthName(m){ return parseDate(m + "-01").toLocaleDateString("en-US", { month:"long" }); }
-  function renderSweepCard(c){
-    var el = $("#sweepCard"), list = pendingSweeps(c);
-    el.hidden = !list.length; if(!list.length) return;
-    var months = list.map(function(x){ return x.m; }).filter(function(m, i, a){ return a.indexOf(m) === i; });
-    el.innerHTML = '<p class="pc-title">Left over from ' + esc(months.map(monthName).join(" and ")) + '</p>' +
-      '<p class="gline" style="margin:4px 0 10px">Move it out of checking so it doesn’t get spent.</p>' +
-      list.map(function(x){ var m = segMeta(x.k); return '<div class="pc-row"><span class="ico sm" style="--c:' + m.color + '">' + m.e + '</span><span class="mid">' + esc(m.name) + '<small>to ' + esc(ACCT_NAMES[x.to] || "Savings") + (months.length > 1 ? ', ' + esc(monthName(x.m)) : '') + '</small></span><strong>' + fmt2(x.amount) + '</strong></div>'; }).join("") +
-      '<div class="acts" style="display:flex;gap:14px;align-items:center;margin-top:12px"><button class="btn sm" data-sw="done">I moved it</button><button class="link" data-sw="skip">Keep it in checking</button></div>';
-  }
-  $("#sweepCard").addEventListener("click", function(e){
-    var b = e.target.closest("[data-sw]"); if(!b) return;
-    var list = pendingSweeps(LC || calc()), total = 0, today = todayStr();
-    state.sweepDone = state.sweepDone || {}; state.transfers = state.transfers || [];
-    list.forEach(function(x, i){
-      if(b.dataset.sw === "done"){ state.transfers.push({ id:uid(), ts:Date.now() + i, date:today, from:"checking", to:x.to, amount:x.amount, sweep:x.k, month:x.m }); total += x.amount; }
-      state.sweepDone[x.k + "|" + x.m] = 1;
-    });
-    save(); update();
-    if(b.dataset.sw === "done") toast("Logged " + fmt2(total) + " moved out of checking.");
-  });
+  function sweepIn(k, c){ return sweepParts(k, c).reduce(function(a, x){ return a + x.amount; }, 0); }
 
   /* ---------- goals ---------- */
   var GOAL_TYPES = [["save","Save up"],["cushion","Emergency cushion"],["payoff","Pay off debt"],["keep","Keep a minimum"]];
@@ -3071,7 +3153,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     recordMonthPlan(c);
     syncAuto(c);
     syncRecurring();
-    renderHome(c); renderWeekly(); renderPlanNumbers(c); renderActivity(); renderAccounts(c); renderSaved();
+    renderLoans(); renderHome(c); renderWeekly(); renderPlanNumbers(c); renderActivity(); renderAccounts(c); renderSaved();
     if(actMode === "months") renderMonths();
     if(accMode === "projection") renderProjection(c);
   }
