@@ -486,6 +486,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       <div id="homeMain">
         <div id="weekly" class="weekly" hidden></div>
         <div id="payCard" class="card pad paycard" hidden></div>
+        <div id="sweepCard" class="card pad paycard" hidden></div>
         <div class="hero">
           <div class="label-row">Spending money left
             <button class="info" type="button" aria-label="About spending money" data-tip="Money left in your spending categories this month, minus what you’ve logged. Gas, bills, sub-goals, and savings are tracked on their own below.">i</button>
@@ -730,9 +731,10 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       <div class="mrow"><div class="label-row">Budget</div><div class="chips" id="catBudget"></div>
         <div id="catFixedWrap" hidden><span class="field amt wide" style="margin-top:8px"><span>$</span><input id="catFixedAmt" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount per month"><span class="unit">/mo</span></span></div></div>
       <div class="mrow" id="catAcctRow"><div class="label-row">Money goes into</div><div class="chips" id="catAcct"></div></div>
-      <div id="catRollRow"><label class="trow flat"><span class="grow">Roll over what’s left</span>
-        <button class="info" type="button" aria-label="About rolling over" data-tip="Unspent money carries into next month instead of resetting. Overspending carries too, so next month starts with less.">i</button>
-        <input type="checkbox" class="switch" id="catRoll" role="switch"></label></div>
+      <div class="mrow" id="catRollRow"><div class="label-row" style="display:flex;align-items:center;gap:8px">What’s left at month end
+        <button class="info" type="button" aria-label="About what’s left" data-tip="Starts fresh: each month resets. Rolls over: unspent money carries into next month, and overspending carries too, so next month starts with less. Moves to an account: at the start of each month you’re asked to move what’s left into the account you pick.">i</button></div>
+        <div class="chips" id="catLeft"></div>
+        <div id="catSweepWrap" hidden><div class="label-row" style="margin-top:12px">Move it into</div><div class="chips" id="catSweepTo"></div></div></div>
       <div id="catPicker"></div>
     </div>
     <button class="btn" id="catSave" style="margin-top:16px">Save changes</button>
@@ -831,7 +833,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     return {
       v:2, name:"", pay:{ amount:"", freq:"month", deductions:[] }, plan:defaultPlan(), segDefs:{},
       acct:{ checking:"", savings:"", emergency:"", card:"", payday:"", cardDue:"", notes:"", updated:null, confirmedAt:{}, spendFrom:"checking", cardApr:"", cardMin:"", lastPay:"" },
-      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, transfers:[], installDismissed:false
+      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, sweepDone:{}, transfers:[], installDismissed:false
     };
   }
   function load(){
@@ -850,7 +852,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
         if(plan.combineFood){ var lf = Math.min(+plan.lastFood || 20, +plan.split.personal || 0); plan.split.food = lf; plan.split.personal = (+plan.split.personal || 0) - lf; }
         plan.keys = ["food","personal","savings","emergency"].concat(plan.customs);
       }
-      plan.combineFood = false; if(!plan.roll) plan.roll = {}; if(!plan.fixed) plan.fixed = {};
+      plan.combineFood = false; if(!plan.roll) plan.roll = {}; if(!plan.sweep || typeof plan.sweep !== "object") plan.sweep = {}; if(!plan.fixed) plan.fixed = {};
       if(plan.gasOn !== undefined || plan.gas !== undefined){
         if(plan.gasOn !== false && plan.keys.indexOf("gas") < 0){ plan.keys.unshift("gas"); plan.fixed.gas = String(plan.gas != null ? plan.gas : 180); }
         delete plan.gasOn; delete plan.gas;
@@ -866,7 +868,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       if(!Array.isArray(proj.years) || proj.years.length !== 3) proj.years = ["","",""];
       return {
         v:2, name:s.name || "", pay:(function(){ var pp = Object.assign(d.pay, s.pay || {}); if(!Array.isArray(pp.deductions)) pp.deductions = []; return pp; })(), plan:plan, segDefs:s.segDefs || {},
-        acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [],
+        acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, sweepDone:s.sweepDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [],
         history:Array.isArray(s.history) ? s.history : [], saved:Array.isArray(s.saved) ? s.saved : [],
         proj:proj, monthPlans:s.monthPlans || {}, autoSkips:s.autoSkips || {}, recon:Object.assign({ last:null, snooze:null }, s.recon || {}), bankHist:Array.isArray(s.bankHist) ? s.bankHist : [], seenTx:s.seenTx || {}, rules:s.rules || {}, recDismiss:s.recDismiss || {}, ocr:Object.assign({ names:{}, items:{}, totals:{} }, s.ocr || {}), installDismissed:!!s.installDismissed
       };
@@ -1053,6 +1055,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     if(hasSubs) sub = "Main: " + sub;
     var cr = isSave ? 0 : carryFor(k, LC || calc());
     if(Math.abs(cr) > 0.5) sub += cr > 0 ? ", " + fmt(cr) + " rolled over" : ", " + fmt(-cr) + " short from last month";
+    var swp = !isSave && (P().sweep || {})[k];
+    if(swp && swp.to) sub += ", leftover to " + (ACCT_NAMES[swp.to] || "Savings").toLowerCase();
     return '<button class="lrow' + (over ? " over" : "") + '" data-log="' + k + '" aria-label="Log ' + esc(segName(k)) + '">' +
       '<span class="ico" style="--c:' + m.color + '">' + m.e + '</span>' +
       '<span class="mid" style="--c:' + m.color + '"><strong>' + esc(segName(k)) + '</strong><small>' + sub + '</small><span class="mini"><i style="width:' + pct.toFixed(1) + '%"></i></span></span>' +
@@ -1096,7 +1100,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#heroFill").style.width = (budget > 0 ? Math.max(0, Math.min(100, left / budget * 100)) : 0) + "%";
     var pd = daysUntil(state.acct.payday);
     $("#heroPay").textContent = pd !== null && pd > 0 ? "Payday " + (pd === 1 ? "tomorrow" : "in " + pd + " days") + (left > 0 ? ", about " + fmt(left / pd) + " a day until then." : ".") : "";
-    renderPayCard(c);
+    renderPayCard(c); renderSweepCard(c);
     $("#homeCats").innerHTML = spendCats().map(function(k){
       return topRow(k, B(k), S(k), subsOf(k).length > 0) + subsOf(k).map(function(s){
         return subRow(k, s, (c.sub[k] || {})[s.id] || 0, (sp[k] && sp[k].subs[s.id]) || 0);
@@ -2424,8 +2428,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   var catDraft = null, catRemoveArmed = false;
   function openCatEditor(k){
     var m = k ? segMeta(k) : null;
-    catDraft = k ? { k:k, name:m.name, save:m.save, account:m.account || "savings", color:m.color, icon:(state.segDefs[k] || {}).icon || m.icon, roll:!!(P().roll || {})[k], fixed:isFixed(k), fixedAmt:isFixed(k) ? P().fixed[k] : "" }
-                 : { k:null, name:"", save:false, account:"savings", color:PALETTE[Object.keys(state.segDefs).length % PALETTE.length], icon:null, roll:false, fixed:false, fixedAmt:"" };
+    catDraft = k ? { k:k, name:m.name, save:m.save, account:m.account || "savings", color:m.color, icon:(state.segDefs[k] || {}).icon || m.icon, roll:!!(P().roll || {})[k], sweep:((P().sweep || {})[k] || {}).to || "", fixed:isFixed(k), fixedAmt:isFixed(k) ? P().fixed[k] : "" }
+                 : { k:null, name:"", save:false, account:"savings", color:PALETTE[Object.keys(state.segDefs).length % PALETTE.length], icon:null, roll:false, sweep:"", fixed:false, fixedAmt:"" };
     $("#catFixedAmt").value = catDraft.fixedAmt || "";
     catRemoveArmed = false;
     $("#catTitle").textContent = k ? "Edit category" : "New category";
@@ -2445,7 +2449,10 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#catRollRow").hidden = d.save || d.k === "bills";
     $("#catBudget").innerHTML = [["pct","Share of what’s left"],["fixed","Set amount"]].map(function(x){ return '<button class="chip" data-budget="' + x[0] + '" aria-pressed="' + ((x[0] === "fixed") === d.fixed) + '">' + x[1] + '</button>'; }).join("");
     $("#catFixedWrap").hidden = !d.fixed;
-    $("#catRoll").checked = d.roll;
+    var leftMode = d.sweep ? "move" : d.roll ? "roll" : "fresh";
+    $("#catLeft").innerHTML = [["fresh","Starts fresh"],["roll","Rolls over"],["move","Moves to an account"]].map(function(x){ return '<button class="chip" data-left="' + x[0] + '" aria-pressed="' + (x[0] === leftMode) + '">' + x[1] + '</button>'; }).join("");
+    $("#catSweepWrap").hidden = leftMode !== "move";
+    $("#catSweepTo").innerHTML = SWEEP_TO.map(function(x){ return '<button class="chip" data-sweepto="' + x + '" aria-pressed="' + (d.sweep === x) + '">' + ACCT_NAMES[x] + '</button>'; }).join("");
     if(full) $("#catPicker").innerHTML = pickerHTML(d.icon, d.color);
     else {
       document.querySelectorAll("#catPicker [data-color]").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.color === d.color); });
@@ -2457,7 +2464,12 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   $("#catName").addEventListener("input", function(e){ catDraft.name = e.target.value; renderCatEditor(false); });
   $("#catKind").addEventListener("click", function(e){ var b = e.target.closest("[data-kind]"); if(!b) return; catDraft.save = b.dataset.kind === "save"; renderCatEditor(false); });
   $("#catAcct").addEventListener("click", function(e){ var b = e.target.closest("[data-acctto]"); if(!b) return; catDraft.account = b.dataset.acctto; renderCatEditor(false); });
-  $("#catRoll").addEventListener("change", function(e){ catDraft.roll = e.target.checked; });
+  $("#catLeft").addEventListener("click", function(e){
+    var b = e.target.closest("[data-left]"); if(!b) return; var v = b.dataset.left;
+    catDraft.roll = v === "roll"; catDraft.sweep = v === "move" ? (catDraft.sweep || "savings") : "";
+    renderCatEditor(false);
+  });
+  $("#catSweepTo").addEventListener("click", function(e){ var b = e.target.closest("[data-sweepto]"); if(!b) return; catDraft.sweep = b.dataset.sweepto; renderCatEditor(false); });
   $("#catBudget").addEventListener("click", function(e){ var b = e.target.closest("[data-budget]"); if(!b) return; catDraft.fixed = b.dataset.budget === "fixed"; renderCatEditor(false); if(catDraft.fixed) $("#catFixedAmt").focus(); });
   $("#catFixedAmt").addEventListener("input", function(e){ catDraft.fixedAmt = e.target.value; });
   $("#catClose").addEventListener("click", function(){ closeModal("#catModal"); });
@@ -2478,6 +2490,10 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     if(d.save) def.account = d.account;
     P().roll = P().roll || {};
     if(d.roll && !P().roll[k]) P().roll[k] = thisMonth; else if(!d.roll) delete P().roll[k];
+    P().sweep = P().sweep || {};
+    if(d.save || !d.sweep || k === "bills") delete P().sweep[k];
+    else if(!P().sweep[k]) P().sweep[k] = { to:d.sweep, from:thisMonth };
+    else P().sweep[k].to = d.sweep;
     commit(); save(); closeModal("#catModal"); renderBills(); renderSplits(); update();
     toast(d.k ? "Saved " + name + "." : "Added " + name + ".");
   });
@@ -2489,7 +2505,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   function removeCategory(k){
     var nm = segMeta(k).name;
     P().keys = P().keys.filter(function(x){ return x !== k; });
-    delete P().split[k]; delete P().subs[k]; if(P().fixed) delete P().fixed[k]; if(P().roll) delete P().roll[k];
+    delete P().split[k]; delete P().subs[k]; if(P().fixed) delete P().fixed[k]; if(P().roll) delete P().roll[k]; if(P().sweep) delete P().sweep[k];
     P().bills.forEach(function(b){ if(b.from === k) b.from = "paycheck"; });
     commit(); renderBills(); renderSplits(); update();
     toast("Removed " + nm + ".", "Undo", revert);
@@ -2611,6 +2627,47 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     }
     return (carryCache[k] = Math.round(carry * 100) / 100);
   }
+
+  /* ---------- leftovers moved to an account ---------- */
+  var SWEEP_TO = ["savings","emergency"];
+  function budgetIn(m, k, c){ var mp = state.monthPlans[m]; return mp && mp.budgets && mp.budgets[k] != null ? mp.budgets[k] : (c.amt[k] || 0); }
+  // Finished months whose leftover hasn't been moved or skipped yet.
+  function pendingSweeps(c){
+    var out = [], sw = P().sweep || {}, done = state.sweepDone || {};
+    splitKeys().forEach(function(k){
+      var cfg = sw[k]; if(!cfg || !cfg.to || segMeta(k).save) return;
+      var m = cfg.from, guard = 0;
+      while(m < thisMonth && guard++ < 24){
+        if(!done[k + "|" + m]){
+          var sp = spentIn(m)[k], left = Math.round((budgetIn(m, k, c) - (sp ? sp.total : 0)) * 100) / 100;
+          if(left > 0.5) out.push({ k:k, m:m, to:cfg.to, amount:left });
+        }
+        m = shiftMonth(m, 1);
+      }
+    });
+    return out;
+  }
+  function monthName(m){ return parseDate(m + "-01").toLocaleDateString("en-US", { month:"long" }); }
+  function renderSweepCard(c){
+    var el = $("#sweepCard"), list = pendingSweeps(c);
+    el.hidden = !list.length; if(!list.length) return;
+    var months = list.map(function(x){ return x.m; }).filter(function(m, i, a){ return a.indexOf(m) === i; });
+    el.innerHTML = '<p class="pc-title">Left over from ' + esc(months.map(monthName).join(" and ")) + '</p>' +
+      '<p class="gline" style="margin:4px 0 10px">Move it out of checking so it doesn’t get spent.</p>' +
+      list.map(function(x){ var m = segMeta(x.k); return '<div class="pc-row"><span class="ico sm" style="--c:' + m.color + '">' + m.e + '</span><span class="mid">' + esc(m.name) + '<small>to ' + esc(ACCT_NAMES[x.to] || "Savings") + (months.length > 1 ? ', ' + esc(monthName(x.m)) : '') + '</small></span><strong>' + fmt2(x.amount) + '</strong></div>'; }).join("") +
+      '<div class="acts" style="display:flex;gap:14px;align-items:center;margin-top:12px"><button class="btn sm" data-sw="done">I moved it</button><button class="link" data-sw="skip">Keep it in checking</button></div>';
+  }
+  $("#sweepCard").addEventListener("click", function(e){
+    var b = e.target.closest("[data-sw]"); if(!b) return;
+    var list = pendingSweeps(LC || calc()), total = 0, today = todayStr();
+    state.sweepDone = state.sweepDone || {}; state.transfers = state.transfers || [];
+    list.forEach(function(x, i){
+      if(b.dataset.sw === "done"){ state.transfers.push({ id:uid(), ts:Date.now() + i, date:today, from:"checking", to:x.to, amount:x.amount, sweep:x.k, month:x.m }); total += x.amount; }
+      state.sweepDone[x.k + "|" + x.m] = 1;
+    });
+    save(); update();
+    if(b.dataset.sw === "done") toast("Logged " + fmt2(total) + " moved out of checking.");
+  });
 
   /* ---------- goals ---------- */
   var GOAL_TYPES = [["save","Save up"],["cushion","Emergency cushion"],["payoff","Pay off debt"],["keep","Keep a minimum"]];
