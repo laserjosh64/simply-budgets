@@ -347,12 +347,17 @@ input[type="range"]::-moz-range-thumb{ width:20px; height:20px; border-radius:50
 .receipt-wrap.drawing{ touch-action:none; outline:3px solid var(--accent); outline-offset:-3px; }
 .receipt-wrap img{ display:block; width:100%; height:auto; }
 .receipt-wrap canvas{ position:absolute; inset:0; width:100%; height:100%; }
-.rc-badge{ position:absolute; left:10px; top:10px; z-index:2; display:flex; gap:7px; align-items:center; background:rgba(0,0,0,.7); color:#fff; font-size:.82rem; font-weight:700; padding:6px 11px; border-radius:99px; pointer-events:none; }
-.rc-badge i{ width:12px; height:12px; border-radius:50%; display:block; }
-.hl{ display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; }
-.hl + .hl, .swatches + .hl{ border-top:1px solid var(--line); }
-.hl[aria-current="true"]{ background:color-mix(in srgb, var(--accent) 9%, transparent); }
-.swatches{ display:flex; gap:8px; padding:0 12px 12px 56px; background:color-mix(in srgb, var(--accent) 9%, transparent); }
+.rcitem{ padding:var(--s3) var(--s4) var(--s2); }
+.rcitem + .rcitem{ border-top:1px solid var(--line); }
+.rcitem[aria-current="true"]{ background:color-mix(in srgb, var(--accent) 7%, transparent); }
+.rctop{ display:flex; align-items:center; gap:var(--s2); }
+.rctop .name-input{ flex:1; min-width:0; }
+.rctop .field{ width:96px; flex:none; min-height:40px; }
+.rctop .field input{ padding:8px 0; }
+.rcitem .hscroll{ padding-top:8px; }
+.catpill.sm{ padding:6px 10px; font-size:.82rem; gap:6px; }
+.rcbrk{ display:flex; align-items:center; gap:10px; padding:4px 0; font-variant-numeric:lining-nums; }
+.rcbrk .grow{ flex:1; }
 .sw{ width:28px; height:28px; border-radius:50%; border:3px solid transparent; cursor:pointer; padding:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
 .sw.big{ width:34px; height:34px; flex:none; }
 .sw[aria-pressed="true"]{ border-color:var(--ink); }
@@ -405,6 +410,26 @@ input[type="range"]::-moz-range-thumb{ width:20px; height:20px; border-radius:50
 .dbot small{ color:var(--muted); font-size:.84rem; }
 .paysum{ display:flex; justify-content:space-between; gap:var(--s3); padding:var(--s3) var(--s4); border-top:1px solid var(--line); font-weight:700; }
 .paysum span{ color:var(--muted); font-weight:600; }
+.retbox{ padding:var(--s3) var(--s4) var(--s4); border-top:1px solid var(--line); }
+.ret-head{ display:flex; align-items:center; gap:8px; font-weight:700; }
+.retbox .chips{ margin-top:var(--s2); }
+.retrow{ margin-top:var(--s3); padding-top:var(--s3); border-top:1px dashed var(--line); }
+.retrow .rname{ font-weight:700; font-size:.95rem; }
+.retrow .rname span{ color:var(--muted); font-weight:500; }
+.retrow small{ display:block; color:var(--muted); font-size:.84rem; margin-top:6px; }
+.unitseg.wide button{ width:auto; padding:0 10px; white-space:nowrap; }
+.retcard{ display:block; width:100%; text-align:left; font:inherit; color:inherit; cursor:pointer; }
+.retcard .lab{ color:var(--muted); font-size:.9rem; font-weight:600; }
+.retcard .rbig, #retSummary .rbig{ font-size:2.2rem; font-weight:800; letter-spacing:-0.02em; line-height:1.1; margin:4px 0 2px; font-variant-numeric:lining-nums; }
+.retcard .minibar{ height:10px; margin-top:12px; }
+.rkey{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; font-size:.86rem; color:var(--muted); font-variant-numeric:lining-nums; }
+.rkey span{ display:inline-flex; align-items:center; gap:6px; }
+.rkey strong{ color:var(--ink); }
+.rmonth{ display:flex; align-items:center; gap:12px; padding:var(--s3) var(--s4); }
+.rmonth + .rmonth{ border-top:1px solid var(--line); }
+.rmonth .mid{ flex:1; min-width:0; }
+.rmonth .mid small{ display:block; white-space:normal; color:var(--muted); font-size:.84rem; }
+.rmonth.old{ opacity:.6; }
 .updatebar{ position:fixed; left:12px; right:12px; bottom:calc(80px + env(safe-area-inset-bottom,0px)); z-index:65; max-width:496px; margin:0 auto; display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s2) var(--s3) var(--s4); background:var(--ink); color:var(--bg); border-radius:var(--r-card); font-size:.92rem; font-weight:600; }
 .updatebar span{ flex:1; }
 .updatebar .x{ color:inherit; }
@@ -498,6 +523,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
         <div class="section-row"><h3>This month</h3><span class="aside">Tap to log</span></div>
         <div class="card" id="homeCats"></div>
         <div id="homeGoalsWrap" hidden><div class="section-row"><h3>Goals</h3><button class="link" data-go="accounts">All goals</button></div><div class="card" id="homeGoals"></div></div>
+        <div id="homeRetWrap" hidden><div class="section-row"><h3>Retirement</h3><button class="link" id="retMore">By month</button></div><button class="card pad retcard" id="retCard"></button></div>
         <div class="section-row"><h3>Recent</h3><button class="link" data-go="activity">See all</button></div>
         <div class="card" id="recent"></div>
       </div>
@@ -524,6 +550,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
         <div id="deds"></div>
         <div class="pad" style="padding-top:12px"><div class="chips" id="dedQuick"></div></div>
         <div class="paysum" id="paySum" hidden></div>
+        <div class="retbox" id="retireBox" hidden></div>
       </div>
 
       <div class="section-row"><h3>Recurring payments
@@ -786,6 +813,23 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   </div>
 </div>
 
+<div class="modal" id="retModal" role="dialog" aria-modal="true" aria-labelledby="retTitle">
+  <div class="in">
+    <div class="mhead"><h2 id="retTitle">Retirement</h2><button class="x" id="retClose" aria-label="Close">×</button></div>
+    <div class="card pad" id="retSummary"></div>
+    <div class="section-row"><h3>Balance
+      <button class="info" type="button" aria-label="About your retirement balance" data-tip="Enter what your retirement account shows today, from your statement or the plan’s website. Each month after that, what you and your employer put in is added on top. Update it whenever you get a new statement to keep it exact.">i</button></h3></div>
+    <div class="card pad">
+      <div class="label-row">Balance on your latest statement</div>
+      <span class="field amt wide" style="margin:8px 0 4px"><span>$</span><input id="retStart" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Retirement balance"></span>
+      <label class="trow flat"><span class="grow" id="retInclLabel">Already includes this month</span><input type="checkbox" class="switch" id="retIncl" role="switch" checked></label>
+      <button class="btn sm" id="retSave" style="margin-top:14px">Save balance</button>
+    </div>
+    <div class="section-row"><h3>By month</h3></div>
+    <div class="card" id="retMonths"></div>
+  </div>
+</div>
+
 <div class="modal" id="debtModal" role="dialog" aria-modal="true" aria-labelledby="debtTitle">
   <div class="in">
     <div class="mhead"><h2 id="debtTitle">New debt</h2><button class="x" id="debtClose" aria-label="Close">×</button></div>
@@ -804,7 +848,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   <div class="in">
     <div class="mhead"><h2 id="rcTitle">Receipt</h2><button class="x" id="rcClose" aria-label="Close">×</button></div>
     <div id="rcStatus"><p class="summary-line" id="rcStatusText">Reading your receipt…</p><div class="progress"><i id="rcProg"></i></div></div>
-    <div class="receipt-wrap" id="rcWrap"><img id="rcImg" alt="Your receipt"><canvas id="rcCanvas"></canvas><div class="rc-badge" id="rcBadge" hidden></div></div>
+    <div class="receipt-wrap" id="rcWrap"><img id="rcImg" alt="Your receipt"><canvas id="rcCanvas"></canvas></div>
     <div class="card pad gap">
       <div class="label-row">Store</div>
       <span class="field" style="margin:6px 0 14px"><input id="rcName" autocomplete="off" placeholder="Store name" aria-label="Store name"></span>
@@ -812,15 +856,13 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       <div class="bigmoney" style="font-size:2.2rem"><span>$</span><input id="rcTotal" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Receipt total"></div>
       <div class="label-row" id="rcMainLabel">Put it in</div>
       <div class="hscroll" id="rcMain" style="margin-top:8px"></div>
-      <label class="trow flat" style="padding-top:8px"><span class="grow">Split into categories</span>
-        <button class="info" type="button" aria-label="About splitting" data-tip="Pick a color for each category, then swipe over those items on the photo. The app adds up the prices you highlight, and everything else goes to the main category.">i</button>
-        <input type="checkbox" class="switch" id="rcSplit" role="switch"></label>
     </div>
-    <div id="rcSplitBox" hidden>
-      <p class="summary-line" style="margin-top:14px">Tap a color, then swipe over its items on the photo.</p>
-      <div class="card" id="rcHls"></div>
-      <div class="dl-row"><button class="btn soft sm" id="rcAddHl">Add a color</button><button class="btn soft sm" id="rcUndo">Undo</button></div>
-      <p class="gline" id="rcRest" style="margin:12px 4px 0"></p>
+    <div id="rcItemsBox" hidden>
+      <div class="section-row"><h3>Items
+        <button class="info" type="button" aria-label="About receipt items" data-tip="Each line the app read off your receipt, with its price. Tap the category each item belongs to. Tax and fees are spread across your categories by how much you spent in each. Fix a name or price by tapping it, or remove a line that isn’t an item.">i</button></h3>
+        <button class="link" id="rcAddItem">Add an item</button></div>
+      <div class="card" id="rcItems"></div>
+      <div class="card pad" id="rcBreak" style="margin-top:12px"></div>
     </div>
     <button class="btn" id="rcSave" style="margin-top:16px">Log it</button>
   </div>
@@ -857,7 +899,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     return {
       v:2, name:"", pay:{ amount:"", freq:"month", deductions:[] }, plan:defaultPlan(), segDefs:{},
       acct:{ checking:"", savings:"", emergency:"", card:"", payday:"", cardDue:"", notes:"", updated:null, confirmedAt:{}, spendFrom:"checking", cardApr:"", cardMin:"", lastPay:"" },
-      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, transfers:[], installDismissed:false
+      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, transfers:[], retire:{ start:"", from:"", since:"", hist:{} }, installDismissed:false
     };
   }
   function load(){
@@ -892,7 +934,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       if(!Array.isArray(proj.years) || proj.years.length !== 3) proj.years = ["","",""];
       return {
         v:2, name:s.name || "", pay:(function(){ var pp = Object.assign(d.pay, s.pay || {}); if(!Array.isArray(pp.deductions)) pp.deductions = []; return pp; })(), plan:plan, segDefs:s.segDefs || {},
-        acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [],
+        acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [], retire:Object.assign({ start:"", from:"", since:"", hist:{} }, s.retire || {}),
         history:Array.isArray(s.history) ? s.history : [], saved:Array.isArray(s.saved) ? s.saved : [],
         proj:proj, monthPlans:s.monthPlans || {}, autoSkips:s.autoSkips || {}, recon:Object.assign({ last:null, snooze:null }, s.recon || {}), bankHist:Array.isArray(s.bankHist) ? s.bankHist : [], seenTx:s.seenTx || {}, rules:s.rules || {}, recDismiss:s.recDismiss || {}, ocr:Object.assign({ names:{}, items:{}, totals:{} }, s.ocr || {}), installDismissed:!!s.installDismissed
       };
@@ -1796,8 +1838,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   $("#sAdd").addEventListener("click", addEntry);
 
   /* ---------- receipt scanning ---------- */
-  var HL_COLORS = ["#FFD23F","#FF6B9A","#4FC3F7","#7CE38B","#B388FF","#FF9F43"];
-  var rc = null, rcToken = 0, drawing = null, tessP = null;
+  var rc = null, rcToken = 0, tessP = null;
   $("#scanBtn").addEventListener("click", function(){ closeSheet(); $("#receiptFile").value = ""; $("#receiptFile").click(); });
   $("#receiptFile").addEventListener("change", function(e){ var f = e.target.files && e.target.files[0]; if(f) startReceipt(f); });
   function loadImage(file){ return new Promise(function(res, rej){ var img = new Image(); img.onload = function(){ res(img); }; img.onerror = rej; img.src = URL.createObjectURL(file); }); }
@@ -1820,23 +1861,34 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       logger:function(m){ if(m && m.status === "recognizing text" && onProg) onProg(m.progress || 0); }
     });
     try{
+      // Read the receipt as one block so an item and its price far to the right stay on the same line.
+      await worker.setParameters({ tessedit_pageseg_mode:"6", preserve_interword_spaces:"1" });
       var r = await worker.recognize(canvas, {}, { blocks:true, text:true });
       var lines = [];
-      (r.data.blocks || []).forEach(function(b){ (b.paragraphs || []).forEach(function(p){ (p.lines || []).forEach(function(l){ lines.push({ text:(l.text || "").trim(), bbox:l.bbox }); }); }); });
-      if(!lines.length && r.data.lines) lines = r.data.lines.map(function(l){ return { text:(l.text || "").trim(), bbox:l.bbox }; });
+      (r.data.blocks || []).forEach(function(b){ (b.paragraphs || []).forEach(function(p){ (p.lines || []).forEach(function(l){ lines.push({ text:(l.text || "").replace(/\s+/g, " ").trim(), bbox:l.bbox }); }); }); });
+      if(!lines.length && r.data.lines) lines = r.data.lines.map(function(l){ return { text:(l.text || "").replace(/\s+/g, " ").trim(), bbox:l.bbox }; });
       return lines.filter(function(l){ return l.text; });
     } finally { worker.terminate(); }
   }
   var PRICE_RE = /(-?)\$?\s?(\d{1,4}(?:,\d{3})*[.,]\d{2})\s*-?\s*[A-Za-z]{0,2}\s*$/;
-  var NONITEM_RE = /(sub\s*-?\s*total|total|tax|change|cash|tender|visa|master\s*card|amex|discover|debit|credit|card|balance|amount due|you saved|saving|tip|gratuity|points|reward|auth|approval|paid)/i;
+  var NONITEM_RE = /(sub\s*-?\s*total|total|tax|change|cash|tender|visa|master\s*card|amex|discover|debit|credit|card|balance|amount due|you saved|saving|tip|gratuity|points|reward|auth|approval|paid|refund|items? sold|# ?items)/i;
+  var DISCOUNT_RE = /(coupon|discount|\bdisc\b|promo|markdown|\boff\b|instant sav|member sav)/i;
   function linePrice(t){
     var m = String(t).match(PRICE_RE); if(!m) return null;
     var s = m[2]; s = s.indexOf(".") > -1 ? s.replace(/,/g,"") : s.replace(",", ".");
     var v = parseFloat(s); if(!isFinite(v)) return null;
-    return m[1] === "-" ? -v : v;
+    return m[1] === "-" || /\d\s*-\s*[A-Za-z]{0,2}\s*$/.test(t) ? -v : v;
   }
   function ocrKey(t){ return String(t || "").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\b\d+\b/g," ").replace(/\s+/g," ").trim(); }
   function itemKey(t){ var w = ocrKey(String(t || "").replace(PRICE_RE, "")).split(" ").filter(function(x){ return x.length > 1; }); return w.slice(0,3).join(" "); }
+  function letterCount(t){ return (String(t).match(/[A-Za-z]/g) || []).length; }
+  // Turns "BNLS CHKN BRST 0007874206 9.47 N" into "Bnls Chkn Brst".
+  function itemName(t){
+    var s = String(t).replace(PRICE_RE, "").replace(/\b[A-Z]?\d{5,}[A-Z]{0,2}\b/g, " ").replace(/[^A-Za-z0-9&'%.\/\- ]/g, " ")
+      .replace(/\s+[A-Za-z]$/, "").replace(/^[\s\-.]+|[\s\-.]+$/g, "").replace(/\s+/g, " ").trim();
+    if(s && s === s.toUpperCase()) s = s.toLowerCase().replace(/(^|[\s&\-\/])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
+    return s;
+  }
   function parseReceipt(lines, H){
     var name = "", totals = [], prices = [], date = null, rawName = "", learnedName = false, learn = state.ocr || { names:{}, items:{}, totals:{} };
     for(var j = 0; j < lines.length; j++){
@@ -1846,34 +1898,45 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     }
     for(var i = 0; i < lines.length && !learnedName; i++){
       var t = lines[i].text; if(lines[i].bbox && lines[i].bbox.y0 > H * 0.35) break;
-      var letters = (t.match(/[A-Za-z]/g) || []).length;
+      var letters = letterCount(t);
       if(letters >= 3 && !/receipt|welcome|thank|store\s*#|tel|phone|www|http|\d{3}[-.) ]\s?\d{3}[- .]\d{4}/i.test(t)){
         name = t.replace(/[^A-Za-z0-9&' .\-]/g," ").replace(/\s+/g," ").trim(); rawName = ocrKey(t); break;
       }
     }
     if(name && !learnedName && name === name.toUpperCase()) name = name.toLowerCase().replace(/(^|[\s&\-])([a-z])/g, function(m, a, b){ return a + b.toUpperCase(); });
-    lines.forEach(function(l){
-      var p = linePrice(l.text); l.price = p; l.item = false;
+    var endAt = -1;
+    lines.forEach(function(l, idx){
+      var p = linePrice(l.text); l.price = p;
       if(!date){ var dm = l.text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/); if(dm){ var y = +dm[3]; if(y < 100) y += 2000; var ds = y + "-" + pad(+dm[1]) + "-" + pad(+dm[2]); var gap = daysUntil(ds); if(gap !== null && gap <= 0 && gap > -90) date = ds; } }
       if(p == null) return;
-      if(/total|amount\s*due|balance\s*due/i.test(l.text) && !/sub\s*-?\s*total|tax|items?\b|saved|saving/i.test(l.text)) totals.push(p);
-      else { prices.push(p); if(p > 0 && !NONITEM_RE.test(l.text)) l.item = true; }
+      if(/total|amount\s*due|balance\s*due/i.test(l.text) && !/sub\s*-?\s*total|tax|items?\b|saved|saving/i.test(l.text)){ totals.push(p); if(endAt < 0) endAt = idx; }
+      else prices.push(p);
+      if(/sub\s*-?\s*total/i.test(l.text) && endAt < 0) endAt = idx;
     });
     var total = totals.length ? Math.max.apply(null, totals) : (prices.length ? Math.max.apply(null, prices) : null);
     var lab = learn.totals[ocrKey(name)];
     if(lab){ var hit = lines.filter(function(l){ return l.price != null && ocrKey(String(l.text).replace(PRICE_RE, "")).indexOf(lab) > -1; }); if(hit.length) total = hit[hit.length - 1].price; }
-    return { name:name, total:total, date:date, rawName:rawName, learnedName:learnedName };
+    return { name:name, total:total, date:date, rawName:rawName, learnedName:learnedName, items:receiptItems(lines, endAt, total) };
   }
-  function makeMask(){ var c = document.createElement("canvas"); c.width = rc.W; c.height = rc.H; return c; }
-  function activeHl(){ return rc && rc.hls.find(function(h){ return h.id === rc.active; }); }
-  function addHl(){
-    var used = rc.hls.map(function(h){ return h.color; });
-    var color = HL_COLORS.find(function(c){ return used.indexOf(c) < 0; }) || HL_COLORS[rc.hls.length % HL_COLORS.length];
-    var all = spendCats().filter(function(k){ return k !== rc.mainCat; });
-    var cats = all.filter(function(k){ return k !== "gas" && k !== "bills" && !segMeta(k).save; }).concat(all.filter(function(k){ return k === "gas" || k === "bills" || segMeta(k).save; }));
-    var cat = cats.find(function(k){ return !rc.hls.some(function(h){ return h.cat === k; }); }) || cats[0] || rc.mainCat;
-    var h = { id:uid(), color:color, cat:cat, amount:0, items:0, manual:false, mask:makeMask() };
-    rc.hls.push(h); rc.active = h.id;
+  // Every priced line above the subtotal is an item. Discounts come off the item above them, and a
+  // quantity or weight line ("2 @ 1.99") takes its name from the line above it.
+  function receiptItems(lines, endAt, total){
+    var items = [], stop = endAt < 0 ? lines.length : endAt;
+    for(var i = 0; i < stop; i++){
+      var l = lines[i], p = l.price, txt = l.text;
+      if(p == null || NONITEM_RE.test(txt)) continue;
+      var last = items[items.length - 1];
+      if(p < 0 || DISCOUNT_RE.test(txt)){ if(last) last.amount = Math.max(0, Math.round((last.amount - Math.abs(p)) * 100) / 100); continue; }
+      if(p === 0 || (total && Math.abs(p - total) < 0.005 && items.length)) continue;
+      var nm = itemName(txt), prev = lines[i - 1];
+      if((letterCount(nm) < 2 || /@|\/\s?lb\b|\blb\s*@|\bea\b/i.test(txt)) && prev && prev.price == null && letterCount(prev.text) >= 2 && !NONITEM_RE.test(prev.text)){
+        nm = itemName(prev.text); txt = prev.text + " " + txt;
+        l = { text:txt, bbox:prev.bbox && l.bbox ? { x0:Math.min(prev.bbox.x0, l.bbox.x0), y0:prev.bbox.y0, x1:Math.max(prev.bbox.x1, l.bbox.x1), y1:l.bbox.y1 } : l.bbox };
+      }
+      if(letterCount(nm) < 2) continue;
+      items.push({ id:uid(), name:nm, amount:p, raw:txt, bbox:l.bbox, cat:null, touched:false });
+    }
+    return items;
   }
   async function startReceipt(file){
     var img;
@@ -1889,13 +1952,12 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var rng = Math.max(1, hi - lo);
     for(i = 0; i < px.length; i += 4){ var nv = (px[i] - lo) * 255 / rng; px[i] = px[i+1] = px[i+2] = nv; }
     g.putImageData(d, 0, 0);
-    rc = { W:W, H:H, lines:[], hls:[], strokes:[], active:null, mainCat:firstSpend(), split:false, ocrDone:false, date:null, mainTouched:false, info:null };
+    rc = { W:W, H:H, lines:[], items:[], active:null, mainCat:firstSpend(), ocrDone:false, date:null, mainTouched:false, info:null };
     $("#rcImg").src = color.toDataURL("image/jpeg", 0.85);
     var cv = $("#rcCanvas"); cv.width = W; cv.height = H;
-    $("#rcName").value = ""; $("#rcTotal").value = ""; $("#rcSplit").checked = false; $("#rcSplitBox").hidden = true;
-    $("#rcWrap").classList.remove("drawing");
+    $("#rcName").value = ""; $("#rcTotal").value = ""; $("#rcItemsBox").hidden = true;
     $("#rcStatus").hidden = false; $("#rcProg").parentNode.hidden = false; $("#rcStatusText").textContent = "Reading your receipt…"; $("#rcProg").style.width = "6%";
-    openModal("#receiptModal"); sizeReceipt(); renderReceipt(); redrawHl();
+    openModal("#receiptModal"); sizeReceipt(); renderReceipt(); drawItems();
     try{
       var lines = await ocr(gray, function(p){ if(token === rcToken) $("#rcProg").style.width = Math.round(10 + p * 90) + "%"; });
       if(token !== rcToken) return;
@@ -1905,19 +1967,19 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       if(info.total && !$("#rcTotal").value) $("#rcTotal").value = info.total.toFixed(2);
       if(info.date) rc.date = info.date;
       var gc = guessCat($("#rcName").value); if(gc && !rc.mainTouched) rc.mainCat = gc;
-      var sorted = autoSortLearned();
+      var learned = (state.ocr || {}).items || {}, cats = spendCats(), known = 0;
+      rc.items = info.items;
+      rc.items.forEach(function(it){ var c = learned[itemKey(it.raw)]; if(c && cats.indexOf(c) > -1){ it.cat = c; it.touched = true; known++; } else it.cat = rc.mainCat; });
       $("#rcProg").parentNode.hidden = true;
-      if(info.learnedName || sorted){
-        $("#rcStatusText").textContent = "Filled in from your past receipts" + (sorted ? ", with " + plural(sorted, "item") + " sorted by color. Check them before logging." : ".");
-      } else $("#rcStatus").hidden = true;
+      $("#rcStatusText").textContent = rc.items.length ? "Found " + plural(rc.items.length, "item") + (known ? ", " + known + " sorted from your past receipts" : "") + ". Tap a category for each one below." : "Couldn’t pick out the items. You can still log the total, or add items yourself.";
       if(!info.total) toast("Couldn’t spot the total. Type it in.");
-      recomputeHl();
     }catch(err){
       if(token !== rcToken) return;
+      rc.ocrDone = true;
       $("#rcStatusText").textContent = "Couldn’t read this receipt automatically. Type the store and total below.";
       $("#rcProg").style.width = "0";
     }
-    renderReceipt();
+    renderReceipt(); drawItems();
   }
   function sizeReceipt(){
     if(!rc) return;
@@ -1927,181 +1989,136 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   }
   window.addEventListener("resize", sizeReceipt);
   function rcTotalVal(){ return Math.round(num($("#rcTotal").value) * 100) / 100; }
-  function rcRest(){ var used = rc.split ? rc.hls.reduce(function(a,h){ return a + (h.amount || 0); }, 0) : 0; return { used:used, rest:Math.round((rcTotalVal() - used) * 100) / 100 }; }
+  function cssColor(c){ var m = /^var\((--[\w-]+)\)$/.exec(c || ""); return m ? getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() || "#888" : (c || "#888"); }
+  // Splits the total by category: items keep their prices and tax or fees are shared out by each category's share.
+  function rcParts(){
+    var total = rcTotalVal(), sums = {}, order = [], itemSum = 0;
+    rc.items.forEach(function(it){ var a = Math.max(0, num(it.amount)); if(a <= 0) return; if(!(it.cat in sums)){ sums[it.cat] = 0; order.push(it.cat); } sums[it.cat] += a; itemSum += a; });
+    if(!order.length || total <= 0) return { parts:total > 0 ? [{ cat:rc.mainCat, amount:total }] : [], itemSum:itemSum, extra:0 };
+    var parts = order.map(function(k){ return { cat:k, amount:Math.round(sums[k] / itemSum * total * 100) / 100, items:rc.items.filter(function(it){ return it.cat === k && num(it.amount) > 0; }).map(function(it){ return it.name; }) }; });
+    var diff = Math.round((total - parts.reduce(function(a, p){ return a + p.amount; }, 0)) * 100) / 100;
+    if(diff){ var big = parts.reduce(function(a, p){ return p.amount > a.amount ? p : a; }); big.amount = Math.round((big.amount + diff) * 100) / 100; }
+    return { parts:parts, itemSum:Math.round(itemSum * 100) / 100, extra:Math.round((total - itemSum) * 100) / 100 };
+  }
+  function catPills(attr, sel, small){
+    var all = spendCats(), rest = function(k){ return k === "gas" || k === "bills" || segMeta(k).save; };
+    return all.filter(function(k){ return !rest(k); }).concat(all.filter(rest)).map(function(k){ var m = segMeta(k); return '<button class="catpill' + (small ? ' sm' : '') + '" ' + attr + '="' + k + '" aria-pressed="' + (k === sel) + '" style="--c:' + m.color + '">' + cdot(k) + '<span>' + esc(catLabel(k)) + '</span></button>'; }).join("");
+  }
   function renderReceipt(){
     if(!rc) return;
     var cats = spendCats();
     if(cats.indexOf(rc.mainCat) < 0) rc.mainCat = firstSpend();
-    $("#rcMainLabel").textContent = rc.split ? "Everything else goes to" : "Put it in";
-    $("#rcMain").innerHTML = cats.map(function(k){ var m = segMeta(k); return '<button class="catpill" data-rcmain="' + k + '" aria-pressed="' + (k === rc.mainCat) + '" style="--c:' + m.color + '">' + cdot(k) + '<span>' + esc(catLabel(k)) + '</span></button>'; }).join("");
-    $("#rcSplitBox").hidden = !rc.split;
-    $("#rcWrap").classList.toggle("drawing", rc.split);
-    var ah = activeHl(), badge = $("#rcBadge");
-    badge.hidden = !(rc.split && ah);
-    if(rc.split && ah) badge.innerHTML = '<i style="background:' + ah.color + '"></i>Swipe over ' + esc(catLabel(ah.cat)) + ' items';
-    if(rc.split){
-      var opts = function(sel){ return cats.map(function(k){ return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + esc(catLabel(k)) + '</option>'; }).join(""); };
-      $("#rcHls").innerHTML = rc.hls.map(function(h){
-        var on = h.id === rc.active;
-        var meta = !rc.ocrDone ? "Type the amount" : (h.items ? plural(h.items, "item") + " highlighted" : (on ? "Swipe over items on the photo" : "Tap to use this color"));
-        return '<div class="hl" data-hl="' + h.id + '" aria-current="' + on + '">' +
-          '<button class="sw big" data-pick="' + h.id + '" style="background:' + h.color + '" aria-label="Use this color"></button>' +
-          '<span class="mid"><select class="select" data-hlcat="' + h.id + '" aria-label="Category for this color">' + opts(h.cat) + '</select><small>' + esc(meta) + '</small></span>' +
-          '<span class="field amt" style="width:100px"><span>$</span><input data-hlamt="' + h.id + '" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + (h.amount ? h.amount.toFixed(2) : "") + '" aria-label="Amount for this color"></span>' +
-          '<button class="x sm" data-hlrm="' + h.id + '" aria-label="Remove this color">×</button></div>' +
-          (on ? '<div class="swatches">' + HL_COLORS.map(function(c){ return '<button class="sw" data-color="' + c + '" data-for="' + h.id + '" style="background:' + c + '" aria-pressed="' + (c === h.color) + '" aria-label="Highlight color"></button>'; }).join("") + '</div>' : '');
-      }).join("");
-    }
-    updateRest();
+    rc.items.forEach(function(it){ if(cats.indexOf(it.cat) < 0) it.cat = rc.mainCat; });
+    $("#rcMainLabel").textContent = rc.items.length ? "Put everything in" : "Put it in";
+    $("#rcMain").innerHTML = catPills("data-rcmain", rc.items.length && rc.items.some(function(it){ return it.cat !== rc.mainCat; }) ? null : rc.mainCat);
+    $("#rcItemsBox").hidden = !rc.ocrDone;
+    $("#rcItems").innerHTML = rc.items.length ? rc.items.map(function(it){
+      return '<div class="rcitem" data-iid="' + it.id + '" aria-current="' + (it.id === rc.active) + '"><div class="rctop">' +
+        '<input class="name-input" data-ik="name" value="' + esc(it.name) + '" placeholder="Item" aria-label="Item name" autocomplete="off">' +
+        '<span class="field amt"><span>$</span><input data-ik="amount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + esc(typeof it.amount === "number" ? it.amount.toFixed(2) : it.amount) + '" aria-label="Price"></span>' +
+        '<button class="x sm" data-irm="1" aria-label="Remove ' + esc(it.name || "item") + '">×</button></div>' +
+        '<div class="hscroll" role="group" aria-label="Category for ' + esc(it.name || "this item") + '">' + catPills("data-icat", it.cat, true) + '</div></div>';
+    }).join("") : '<div class="empty">No items found. Add them to split this receipt across categories.</div>';
+    renderBreak();
   }
-  function updateRest(){
+  function renderBreak(){
     if(!rc) return;
-    var r = rcRest(), total = rcTotalVal();
-    if(rc.split){
-      $("#rcRest").className = "gline" + (r.rest < -0.004 ? " warn" : "");
-      $("#rcRest").textContent = r.rest < -0.004 ? "Your colors add up to " + fmt2(r.used) + ", more than the total." :
-        fmt2(Math.max(0, r.rest)) + " goes to " + catLabel(rc.mainCat) + ".";
+    var total = rcTotalVal(), r = rcParts(), el = $("#rcBreak");
+    el.hidden = !rc.items.length || total <= 0;
+    if(!el.hidden){
+      var note = r.extra > 0.004 ? fmt2(r.extra) + " in tax and fees is split between these by how much you spent in each." :
+        r.extra < -0.004 ? "The items add up to " + fmt2(r.itemSum) + ", " + fmt2(-r.extra) + " more than the total. Check the prices, or these get scaled down to match." : "";
+      el.innerHTML = r.parts.map(function(p){ return '<div class="rcbrk">' + cdot(p.cat) + '<span class="grow">' + esc(catLabel(p.cat)) + (p.items ? ' <small style="color:var(--muted)">' + plural(p.items.length, "item") + '</small>' : '') + '</span><strong>' + fmt2(p.amount) + '</strong></div>'; }).join("") +
+        (note ? '<p class="gline' + (r.extra < -0.004 ? ' warn' : '') + '" style="margin-top:8px">' + note + '</p>' : '');
     }
-    $("#rcSave").textContent = total > 0 ? "Log " + fmt2(total) : "Log it";
+    $("#rcSave").textContent = total > 0 ? "Log " + fmt2(total) + (r.parts.length > 1 ? " in " + r.parts.length + " categories" : "") : "Log it";
   }
-  function repaintMasks(){
-    rc.hls.forEach(function(h){ h.mask.getContext("2d").clearRect(0, 0, rc.W, rc.H); });
-    rc.strokes.forEach(function(s){ var h = rc.hls.find(function(x){ return x.id === s.h; }); if(h) paintStroke(h, s, 0); });
-  }
-  function paintStroke(h, s, from){
-    var ctx = h.mask.getContext("2d"), pts = s.pts;
-    if(s.rect){ ctx.fillStyle = h.color; ctx.fillRect(s.rect[0], s.rect[1], s.rect[2], s.rect[3]); return; }
-    ctx.strokeStyle = h.color; ctx.fillStyle = h.color; ctx.lineWidth = s.w; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    if(pts.length === 1){ ctx.beginPath(); ctx.arc(pts[0][0], pts[0][1], s.w / 2, 0, Math.PI * 2); ctx.fill(); return; }
-    ctx.beginPath(); var st = Math.max(0, (from || 0) - 1); ctx.moveTo(pts[st][0], pts[st][1]);
-    for(var i = st + 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.stroke();
-  }
-  var hlFrame = 0;
-  function redrawHl(){
-    if(hlFrame) return;
-    hlFrame = requestAnimationFrame(function(){
-      hlFrame = 0; if(!rc) return;
+  var drawFrame = 0;
+  function drawItems(){
+    if(drawFrame) return;
+    drawFrame = requestAnimationFrame(function(){
+      drawFrame = 0; if(!rc) return;
       var ctx = $("#rcCanvas").getContext("2d"); ctx.clearRect(0, 0, rc.W, rc.H);
-      ctx.globalAlpha = 0.42; rc.hls.forEach(function(h){ ctx.drawImage(h.mask, 0, 0); }); ctx.globalAlpha = 1;
+      rc.items.forEach(function(it){
+        if(!it.bbox) return; var b = it.bbox, pd = 4, on = it.id === rc.active;
+        ctx.globalAlpha = on ? 0.45 : 0.25; ctx.fillStyle = cssColor(segMeta(it.cat).color);
+        ctx.fillRect(b.x0 - pd, b.y0 - pd, b.x1 - b.x0 + pd * 2, b.y1 - b.y0 + pd * 2);
+      });
+      ctx.globalAlpha = 1;
     });
   }
-  function coverage(mask, b){
-    var x0 = Math.max(0, Math.floor(b.x0)), y0 = Math.max(0, Math.floor(b.y0));
-    var w = Math.min(rc.W, Math.ceil(b.x1)) - x0, h = Math.min(rc.H, Math.ceil(b.y1)) - y0;
-    if(w <= 0 || h <= 0) return 0;
-    var d = mask.getContext("2d").getImageData(x0, y0, w, h).data, hit = 0, n = 0;
-    for(var y = 0; y < h; y += 3) for(var x = 0; x < w; x += 3){ n++; if(d[(y * w + x) * 4 + 3] > 0) hit++; }
-    return n ? hit / n : 0;
-  }
-  function recomputeHl(){
-    if(!rc || !rc.ocrDone) return;
-    rc.hls.forEach(function(h){ h.items = 0; if(!h.manual) h.amount = 0; });
-    rc.lines.forEach(function(l){
-      if(!l.item || !l.bbox) return;
-      var best = null, bv = 0.18;
-      rc.hls.forEach(function(h){ var c = coverage(h.mask, l.bbox); if(c > bv){ bv = c; best = h; } });
-      if(best){ best.items++; if(!best.manual) best.amount = Math.round((best.amount + l.price) * 100) / 100; }
-    });
-  }
-  function autoSortLearned(){
-    var items = (state.ocr || {}).items || {}, groups = {}, n = 0, cats = spendCats();
-    rc.lines.forEach(function(l){
-      if(!l.item || !l.bbox) return;
-      var c = items[itemKey(l.text)];
-      if(c && cats.indexOf(c) > -1 && c !== rc.mainCat){ (groups[c] = groups[c] || []).push(l); n++; }
-    });
-    if(!n) return 0;
-    rc.split = true; $("#rcSplit").checked = true;
-    Object.keys(groups).forEach(function(cat){
-      if(rc.hls.length >= HL_COLORS.length) return;
-      addHl(); var h = activeHl(); h.cat = cat;
-      groups[cat].forEach(function(l){ var b = l.bbox, pd = 4; var st = { h:h.id, pts:[], rect:[b.x0 - pd, b.y0 - pd, (b.x1 - b.x0) + pd * 2, (b.y1 - b.y0) + pd * 2] }; rc.strokes.push(st); paintStroke(h, st, 0); });
-    });
-    recomputeHl(); redrawHl();
-    return n;
-  }
-  function learnReceipt(name, total, mainCat){
+  function learnReceipt(name, total){
     var o = state.ocr || (state.ocr = { names:{}, items:{}, totals:{} });
     if(rc.info && rc.info.rawName) o.names[rc.info.rawName] = name;
     if(!rc.ocrDone) return;
-    rc.lines.forEach(function(l){
-      if(!l.item || !l.bbox) return;
-      var k = itemKey(l.text); if(!k) return;
-      var cat = mainCat;
-      if(rc.split){ var best = null, bv = 0.18; rc.hls.forEach(function(h){ var cv = coverage(h.mask, l.bbox); if(cv > bv){ bv = cv; best = h; } }); if(best) cat = best.cat; }
-      o.items[k] = cat;
-    });
+    rc.items.forEach(function(it){ var k = itemKey(it.raw || it.name); if(k) o.items[k] = it.cat; });
     if(rc.info && Math.abs((rc.info.total || 0) - total) > 0.009){
       var hit = rc.lines.filter(function(l){ return l.price != null && Math.abs(l.price - total) < 0.011; }).pop();
       if(hit){ var lab = ocrKey(String(hit.text).replace(PRICE_RE, "")).split(" ").filter(function(w){ return w.length > 2; })[0]; if(lab) o.totals[ocrKey(name)] = lab; }
     }
     var keys = Object.keys(o.items); if(keys.length > 1500) keys.slice(0, keys.length - 1500).forEach(function(k){ delete o.items[k]; });
   }
-  function canvasPt(e){ var r = $("#rcCanvas").getBoundingClientRect(); return [(e.clientX - r.left) * rc.W / r.width, (e.clientY - r.top) * rc.H / r.height]; }
-  var cvs = $("#rcCanvas");
-  cvs.addEventListener("pointerdown", function(e){
-    if(!rc || !rc.split) return; var h = activeHl(); if(!h) return;
-    e.preventDefault(); try{ cvs.setPointerCapture(e.pointerId); }catch(err){}
-    drawing = { h:h.id, pts:[canvasPt(e)], w:Math.max(14, Math.min(rc.W * 0.05, rc.H * 0.028)) };
-    rc.strokes.push(drawing); paintStroke(h, drawing, 0); redrawHl();
+  function findItem(el){ var row = el.closest("[data-iid]"); return row ? rc.items.find(function(x){ return x.id === row.dataset.iid; }) : null; }
+  $("#rcMain").addEventListener("click", function(e){
+    var b = e.target.closest("[data-rcmain]"); if(!b) return;
+    rc.mainCat = b.dataset.rcmain; rc.mainTouched = true;
+    rc.items.forEach(function(it){ it.cat = rc.mainCat; });
+    renderReceipt(); drawItems();
   });
-  cvs.addEventListener("pointermove", function(e){
-    if(!drawing) return; e.preventDefault();
-    var h = activeHl(); if(!h) return;
-    drawing.pts.push(canvasPt(e)); paintStroke(h, drawing, drawing.pts.length - 1); redrawHl();
-  });
-  function endStroke(){ if(!drawing) return; drawing = null; recomputeHl(); renderReceipt(); }
-  cvs.addEventListener("pointerup", endStroke); cvs.addEventListener("pointercancel", endStroke);
-  $("#rcSplit").addEventListener("change", function(e){
-    rc.split = e.target.checked;
-    if(rc.split && !rc.hls.length) addHl();
-    renderReceipt(); redrawHl();
-    if(rc.split) $("#rcWrap").scrollIntoView({ behavior:"smooth", block:"start" });
-  });
-  $("#rcAddHl").addEventListener("click", function(){ if(rc.hls.length >= HL_COLORS.length) return toast("That’s every color."); addHl(); renderReceipt(); });
-  $("#rcUndo").addEventListener("click", function(){
-    if(!rc.strokes.length) return;
-    rc.strokes.pop(); repaintMasks(); recomputeHl(); renderReceipt(); redrawHl();
-  });
-  $("#rcMain").addEventListener("click", function(e){ var b = e.target.closest("[data-rcmain]"); if(!b) return; rc.mainCat = b.dataset.rcmain; rc.mainTouched = true; renderReceipt(); });
-  $("#rcHls").addEventListener("click", function(e){
-    var t = e.target.closest("button"), row = e.target.closest(".hl");
-    if(t && t.dataset.color){ var h = rc.hls.find(function(x){ return x.id === t.dataset.for; }); if(h){ h.color = t.dataset.color; repaintMasks(); redrawHl(); renderReceipt(); } return; }
-    if(t && t.dataset.hlrm){
-      rc.strokes = rc.strokes.filter(function(s){ return s.h !== t.dataset.hlrm; });
-      rc.hls = rc.hls.filter(function(x){ return x.id !== t.dataset.hlrm; });
-      if(rc.active === t.dataset.hlrm) rc.active = rc.hls.length ? rc.hls[rc.hls.length - 1].id : null;
-      if(!rc.hls.length){ rc.split = false; $("#rcSplit").checked = false; }
-      repaintMasks(); redrawHl(); recomputeHl(); renderReceipt(); return;
+  $("#rcItems").addEventListener("click", function(e){
+    var it = findItem(e.target); if(!it) return;
+    var c = e.target.closest("[data-icat]");
+    if(c){
+      it.cat = c.dataset.icat; it.touched = true; rc.active = it.id;
+      var row = e.target.closest("[data-iid]");
+      row.querySelectorAll("[data-icat]").forEach(function(b){ b.setAttribute("aria-pressed", String(b === c)); });
+      document.querySelectorAll("#rcItems .rcitem").forEach(function(r){ r.setAttribute("aria-current", String(r === row)); });
+      $("#rcMain").innerHTML = catPills("data-rcmain", rc.items.some(function(x){ return x.cat !== rc.mainCat; }) ? null : rc.mainCat);
+      renderBreak(); drawItems(); return;
     }
-    if(row && !(e.target.closest("select") || e.target.closest("input"))){ rc.active = row.dataset.hl; renderReceipt(); $("#rcWrap").scrollIntoView({ behavior:"smooth", block:"start" }); }
+    if(e.target.closest("[data-irm]")){
+      var i = rc.items.indexOf(it), gone = rc.items.splice(i, 1)[0];
+      renderReceipt(); drawItems();
+      toast("Removed " + (gone.name || "item") + ".", "Undo", function(){ rc.items.splice(i, 0, gone); renderReceipt(); drawItems(); });
+      return;
+    }
+    if(rc.active !== it.id){ rc.active = it.id; document.querySelectorAll("#rcItems .rcitem").forEach(function(r){ r.setAttribute("aria-current", String(r.dataset.iid === it.id)); }); drawItems(); }
   });
-  $("#rcHls").addEventListener("change", function(e){
-    var id = e.target.dataset.hlcat; if(!id) return;
-    var h = rc.hls.find(function(x){ return x.id === id; }); if(h){ h.cat = e.target.value; rc.active = id; renderReceipt(); $("#rcWrap").scrollIntoView({ behavior:"smooth", block:"start" }); }
+  $("#rcItems").addEventListener("input", function(e){
+    var it = findItem(e.target), k = e.target.dataset.ik; if(!it || !k) return;
+    it[k] = e.target.value;
+    renderBreak();
   });
-  $("#rcHls").addEventListener("input", function(e){
-    var id = e.target.dataset.hlamt; if(!id) return;
-    var h = rc.hls.find(function(x){ return x.id === id; }); if(!h) return;
-    h.manual = e.target.value.trim() !== ""; h.amount = Math.round(num(e.target.value) * 100) / 100;
-    if(!h.manual) recomputeHl();
-    updateRest();
+  $("#rcItems").addEventListener("focusout", function(e){
+    var it = findItem(e.target); if(!it || e.target.dataset.ik !== "amount") return;
+    var v = num(it.amount); it.amount = v; e.target.value = v ? v.toFixed(2) : "";
   });
-  $("#rcTotal").addEventListener("input", updateRest);
-  $("#rcName").addEventListener("input", function(e){ if(rc && !rc.mainTouched){ var gc = guessCat(e.target.value); if(gc){ rc.mainCat = gc; renderReceipt(); } } });
+  $("#rcAddItem").addEventListener("click", function(){
+    var it = { id:uid(), name:"", amount:"", raw:"", bbox:null, cat:rc.mainCat, touched:true };
+    rc.items.push(it); rc.active = it.id; renderReceipt();
+    var row = document.querySelector('#rcItems [data-iid="' + it.id + '"] [data-ik="name"]'); if(row) row.focus();
+  });
+  $("#rcTotal").addEventListener("input", renderBreak);
+  $("#rcName").addEventListener("input", function(e){
+    if(!rc || rc.mainTouched) return;
+    var gc = guessCat(e.target.value); if(!gc || gc === rc.mainCat) return;
+    var old = rc.mainCat; rc.mainCat = gc;
+    rc.items.forEach(function(it){ if(!it.touched && it.cat === old) it.cat = gc; });
+    renderReceipt(); drawItems();
+  });
   $("#rcClose").addEventListener("click", function(){ rcToken++; closeModal("#receiptModal"); });
   $("#rcSave").addEventListener("click", function(){
     var total = rcTotalVal();
     if(total <= 0){ toast("Type the total first."); $("#rcTotal").focus(); return; }
-    var r = rcRest();
-    if(r.rest < -0.004){ toast("Your colors add up to more than the total."); return; }
-    var name = $("#rcName").value.trim() || "Receipt", date = rc.date || todayStr(), gid = uid(), parts = [];
-    if(rc.split) rc.hls.forEach(function(h){ if(h.amount > 0) parts.push({ cat:h.cat, amount:h.amount }); });
-    if(r.rest > 0.004) parts.push({ cat:rc.mainCat, amount:r.rest });
-    parts.forEach(function(p, i){ state.log.push({ id:uid(), ts:Date.now() + i, date:date, amount:p.amount, cat:p.cat, name:name, note:(parts.length > 1 ? "Split receipt" : "Receipt"), group:gid }); });
-    state.rules[mKey(name)] = rc.mainCat;
-    learnReceipt(name, total, rc.mainCat);
+    var name = $("#rcName").value.trim() || "Receipt", date = rc.date || todayStr(), gid = uid(), parts = rcParts().parts;
+    parts.forEach(function(p, i){
+      var names = (p.items || []).filter(Boolean), note = parts.length > 1 ? "Split receipt" : "Receipt";
+      if(names.length) note += ": " + names.slice(0, 3).join(", ") + (names.length > 3 ? " and " + (names.length - 3) + " more" : "");
+      state.log.push({ id:uid(), ts:Date.now() + i, date:date, amount:p.amount, cat:p.cat, name:name, note:note, group:gid });
+    });
+    var main = parts.reduce(function(a, p){ return !a || p.amount > a.amount ? p : a; }, null);
+    state.rules[mKey(name)] = main ? main.cat : rc.mainCat;
+    learnReceipt(name, total);
     save(); rcToken++; closeModal("#receiptModal"); update();
     toast("Logged " + fmt2(total) + " from " + name + (parts.length > 1 ? " in " + parts.length + " categories." : "."));
   });
@@ -3023,6 +3040,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     }).join("") || '<div class="empty" style="padding:16px 16px 0">Add what comes out before you’re paid. Leave this empty if you already enter your take-home pay.</div>';
     $("#dedQuick").innerHTML = DED_QUICK.filter(function(q){ return q[0] === "Other" || !deds().some(function(d){ return d.name === q[0]; }); })
       .map(function(q){ return '<button class="chip" data-dadd="' + esc(q[0]) + '">+ ' + esc(q[0]) + '</button>'; }).join("");
+    renderRetireBox();
   }
   function renderDedNumbers(c){
     var g = num(state.pay.amount), gm = grossMode(), per = state.pay.freq === "month" ? "a month" : "per paycheck";
@@ -3035,6 +3053,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#dedTotal").textContent = gm ? fmt2(t) + (state.pay.freq === "month" ? "/mo" : "/paycheck") : "";
     $("#paySum").hidden = !gm || g <= 0;
     if(gm && g > 0) $("#paySum").innerHTML = '<span>Take-home</span>' + fmt2(netPerPaycheck()) + ' ' + per;
+    renderRetireNumbers();
   }
   $("#dedQuick").addEventListener("click", function(e){
     var b = e.target.closest("[data-dadd]"); if(!b) return;
@@ -3050,6 +3069,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var row = e.target.closest("[data-did]"); if(!row) return;
     var d = deds().find(function(x){ return x.id === row.dataset.did; }); if(!d) return;
     d[e.target.dataset.dk] = e.target.value; save(); update();
+    if(e.target.dataset.dk === "name") renderRetireBox();
   });
   $("#deds").addEventListener("click", function(e){
     var row = e.target.closest("[data-did]"); if(!row) return;
@@ -3059,6 +3079,120 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       var gone = deds().splice(i, 1)[0]; save(); renderDeds(); update();
       toast("Removed " + (gone.name || "deduction") + ".", "Undo", function(){ deds().splice(i, 0, gone); save(); renderDeds(); update(); });
     }
+  });
+
+
+  /* ---------- retirement ---------- */
+  var RETIRE_RE = /401|403|457|\bsers\b|psers|pension|retire|\bira\b|\btsp\b|roth|\bstrs\b|\bpers\b/i;
+  var RET_UNITS = [["mine","% of yours","Percent of what you put in"],["pay","% of pay","Percent of your pay"],["amt","$","Dollar amount"]];
+  function isRetire(d){ return d.retire != null ? !!d.retire : RETIRE_RE.test(d.name || ""); }
+  function retireDeds(){ return grossMode() ? deds().filter(isRetire) : []; }
+  function matchOf(d){ return d.match || (d.match = { type:"mine", value:"" }); }
+  function matchAmount(d, gross){ var m = matchOf(d), v = num(m.value); return m.type === "amt" ? v : m.type === "pay" ? gross * v / 100 : dedAmount(d, gross) * v / 100; }
+  function retireMonthly(){
+    var g = num(state.pay.amount), f = FREQ[state.pay.freq] || 1, mine = 0, match = 0;
+    retireDeds().forEach(function(d){ mine += dedAmount(d, g); match += matchAmount(d, g); });
+    return { mine:Math.round(mine * f * 100) / 100, match:Math.round(match * f * 100) / 100 };
+  }
+  function ret(){ return state.retire || (state.retire = { start:"", from:"", since:"", hist:{} }); }
+  // Each month is written down once with that month's rates, so changing a percentage later doesn't rewrite the past.
+  function syncRetire(){
+    var r = ret(), mon = retireMonthly(), has = mon.mine + mon.match > 0, changed = false, guard = 0;
+    r.hist = r.hist || {};
+    if(!r.since){ if(!has) return; r.since = thisMonth; changed = true; }
+    for(var m = r.since; m <= thisMonth && guard++ < 600; m = shiftMonth(m, 1)){
+      var cur = r.hist[m];
+      if(m === thisMonth){
+        if(has && (!cur || cur.mine !== mon.mine || cur.match !== mon.match)){ r.hist[m] = { mine:mon.mine, match:mon.match }; changed = true; }
+        else if(!has && cur){ delete r.hist[m]; changed = true; }
+      } else if(!cur && has){ r.hist[m] = { mine:mon.mine, match:mon.match }; changed = true; }
+    }
+    if(changed) save();
+  }
+  function retireTotals(){
+    var r = ret(), from = r.from || r.since || thisMonth, t = { start:num(r.start), mine:0, match:0 };
+    Object.keys(r.hist || {}).forEach(function(m){ if(m >= from && m <= thisMonth){ t.mine += num(r.hist[m].mine); t.match += num(r.hist[m].match); } });
+    t.total = t.start + t.mine + t.match;
+    return t;
+  }
+  function renderRetireBox(){
+    var box = $("#retireBox"), ds = deds();
+    box.hidden = !ds.length; if(!ds.length) return;
+    var rs = ds.filter(isRetire);
+    box.innerHTML = '<div class="ret-head">Retirement match <button class="info" type="button" aria-label="About retirement match" data-tip="Pick which deductions go to retirement, then enter what your employer adds. Most plans match a percent of what you put in, like 50% of your 5%. Some add a percent of your pay or a set amount instead. The Retirement card on Home adds it all up month by month.">i</button></div>' +
+      '<p class="gline" style="margin-top:4px">Which of these go to retirement?</p>' +
+      '<div class="chips">' + ds.map(function(d){ return '<button class="chip" data-rtog="' + d.id + '" aria-pressed="' + isRetire(d) + '">' + esc(d.name || "Unnamed") + '</button>'; }).join("") + '</div>' +
+      rs.map(function(d){
+        var m = matchOf(d), unit = m.type || "mine";
+        return '<div class="retrow" data-rid="' + d.id + '"><div class="rname">' + esc(d.name || "Retirement") + ' <span>· your employer adds</span></div>' +
+          '<div class="dbot"><span class="field amt" style="width:96px">' + (unit === "amt" ? '<span>$</span>' : '') + '<input data-rk="value" inputmode="decimal" autocomplete="off" placeholder="0" value="' + esc(m.value) + '" aria-label="Employer match for ' + esc(d.name || "retirement") + '">' + (unit === "amt" ? '' : '<span>%</span>') + '</span>' +
+          '<span class="unitseg wide">' + RET_UNITS.map(function(u){ return '<button data-runit="' + u[0] + '" aria-pressed="' + (unit === u[0]) + '" aria-label="' + u[2] + '">' + u[1] + '</button>'; }).join("") + '</span></div>' +
+          '<small id="rsum-' + d.id + '"></small></div>';
+      }).join("") +
+      '<p class="gline" id="retSum"></p>';
+    renderRetireNumbers();
+  }
+  function renderRetireNumbers(){
+    if($("#retireBox").hidden) return;
+    var g = num(state.pay.amount), f = FREQ[state.pay.freq] || 1;
+    deds().filter(isRetire).forEach(function(d){
+      var el = document.getElementById("rsum-" + d.id); if(!el) return;
+      var mine = dedAmount(d, g) * f, match = matchAmount(d, g) * f;
+      el.textContent = g <= 0 ? "Enter your pay above to see the dollar amounts." : (match > 0 ? fmt2(match) + " a month from your employer, on top of your " + fmt2(mine) + "." : "You put in " + fmt2(mine) + " a month. Add your employer’s match if they have one.");
+    });
+    var mon = retireMonthly(), el = $("#retSum");
+    if(el) el.innerHTML = mon.mine + mon.match > 0 ? 'Going to retirement each month: <strong>' + fmt2(mon.mine + mon.match) + '</strong>' + (mon.match > 0 ? ' (' + fmt2(mon.mine) + ' from you, ' + fmt2(mon.match) + ' from your employer)' : '') + '.' : '';
+  }
+  $("#retireBox").addEventListener("click", function(e){
+    var t = e.target.closest("[data-rtog]");
+    if(t){ var d = deds().find(function(x){ return x.id === t.dataset.rtog; }); if(!d) return; d.retire = !isRetire(d); save(); renderRetireBox(); update(); return; }
+    var u = e.target.closest("[data-runit]"), row = e.target.closest("[data-rid]");
+    if(u && row){ var d2 = deds().find(function(x){ return x.id === row.dataset.rid; }); if(!d2) return; matchOf(d2).type = u.dataset.runit; save(); renderRetireBox(); update(); }
+  });
+  $("#retireBox").addEventListener("input", function(e){
+    var row = e.target.closest("[data-rid]"); if(!row || !e.target.dataset.rk) return;
+    var d = deds().find(function(x){ return x.id === row.dataset.rid; }); if(!d) return;
+    matchOf(d).value = e.target.value; save(); update();
+  });
+  function renderRetireCard(){
+    var r = ret(), mon = retireMonthly(), show = !LC || LC.monthly > 0;
+    show = show && (mon.mine + mon.match > 0 || num(r.start) > 0 || Object.keys(r.hist || {}).length > 0);
+    $("#homeRetWrap").hidden = !show; if(!show) return;
+    var t = retireTotals(), parts = [["Starting balance", t.start, "var(--bills)"], ["From you", t.mine, "var(--savings)"], ["From your employer", t.match, "var(--emergency)"]];
+    var sub = mon.mine + mon.match > 0 ? "Adding " + fmt2(mon.mine + mon.match) + " a month" + (mon.match > 0 ? ", " + fmt2(mon.match) + " of it from your employer." : ".") : "Mark a paycheck deduction as retirement in Plan to add to this.";
+    $("#retCard").innerHTML = '<div class="lab">Saved for retirement</div><div class="rbig">' + fmt2(t.total) + '</div><p class="gline" style="margin:0">' + esc(sub) + '</p>' +
+      (t.total > 0 ? '<div class="minibar">' + parts.filter(function(p){ return p[1] > 0; }).map(function(p){ return '<i style="width:' + (p[1] / t.total * 100).toFixed(2) + '%;background:' + p[2] + '"></i>'; }).join("") + '</div>' : '') +
+      '<div class="rkey">' + parts.filter(function(p){ return p[1] > 0 || p[0] !== "Starting balance"; }).map(function(p){ return '<span><i class="cdot" style="--c:' + p[2] + '"></i>' + p[0] + ' <strong>' + fmt(p[1]) + '</strong></span>'; }).join("") + '</div>' +
+      (!num(r.start) ? '<p class="gline" style="color:var(--accent);font-weight:600">Already have money saved? Tap to add your balance.</p>' : '');
+    if($("#retModal").classList.contains("open")) renderRetireModal();
+  }
+  function renderRetireModal(){
+    var r = ret(), t = retireTotals(), from = r.from || r.since || thisMonth;
+    $("#retSummary").innerHTML = '<div class="label-row">Saved for retirement</div><div class="rbig">' + fmt2(t.total) + '</div>' +
+      '<div class="rkey"><span><i class="cdot" style="--c:var(--bills)"></i>Starting balance <strong>' + fmt2(t.start) + '</strong></span><span><i class="cdot" style="--c:var(--savings)"></i>From you <strong>' + fmt2(t.mine) + '</strong></span><span><i class="cdot" style="--c:var(--emergency)"></i>From your employer <strong>' + fmt2(t.match) + '</strong></span></div>';
+    $("#retInclLabel").textContent = "Already includes " + monthName(thisMonth) + "’s contributions";
+    var ms = Object.keys(r.hist || {}).filter(function(m){ return m <= thisMonth; }).sort().reverse(), run = t.total;
+    $("#retMonths").innerHTML = ms.length ? ms.map(function(m){
+      var h = r.hist[m], amt = num(h.mine) + num(h.match), counted = m >= from;
+      var row = '<div class="rmonth' + (counted ? '' : ' old') + '"><span class="mid"><strong>' + monthLabel(m) + '</strong><small>' + fmt2(num(h.mine)) + ' from you' + (num(h.match) > 0 ? ', ' + fmt2(num(h.match)) + ' from your employer' : '') + (counted ? '' : '. Part of your balance') + '</small></span>' +
+        '<span class="right">+' + fmt2(amt) + (counted ? '<small>' + fmt(run) + ' total</small>' : '') + '</span></div>';
+      if(counted) run -= amt;
+      return row;
+    }).join("") : '<div class="empty">Months show up here once a paycheck deduction is marked as retirement.</div>';
+  }
+  function openRetire(){
+    var r = ret();
+    $("#retStart").value = r.start || "";
+    $("#retIncl").checked = !r.from || r.from > thisMonth;
+    renderRetireModal(); openModal("#retModal");
+  }
+  $("#retCard").addEventListener("click", openRetire);
+  $("#retMore").addEventListener("click", openRetire);
+  $("#retClose").addEventListener("click", function(){ closeModal("#retModal"); });
+  $("#retSave").addEventListener("click", function(){
+    var r = ret(); r.start = $("#retStart").value.trim();
+    r.from = $("#retIncl").checked ? shiftMonth(thisMonth, 1) : thisMonth;
+    save(); update(); renderRetireModal(); toast("Saved your retirement balance.");
   });
 
   /* ---------- install prompt ---------- */
@@ -3152,8 +3286,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var c = calc(); LC = c;
     recordMonthPlan(c);
     syncAuto(c);
-    syncRecurring();
-    renderLoans(); renderHome(c); renderWeekly(); renderPlanNumbers(c); renderActivity(); renderAccounts(c); renderSaved();
+    syncRecurring(); syncRetire();
+    renderLoans(); renderRetireCard(); renderHome(c); renderWeekly(); renderPlanNumbers(c); renderActivity(); renderAccounts(c); renderSaved();
     if(actMode === "months") renderMonths();
     if(accMode === "projection") renderProjection(c);
   }
