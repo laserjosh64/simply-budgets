@@ -376,6 +376,10 @@ input[type="range"]::-moz-range-thumb{ width:20px; height:20px; border-radius:50
 .ico.sm svg{ width:17px; height:17px; }
 .ico.big{ width:60px; height:60px; border-radius:16px; font-size:1.4rem; }
 .ico.big svg{ width:30px; height:30px; }
+.ico{ overflow:hidden; }
+.ico .icoimg{ width:100%; height:100%; object-fit:cover; display:block; }
+.photopick{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.photopick label.chip{ cursor:pointer; }
 .iconpick{ display:grid; grid-template-columns:repeat(auto-fill, minmax(44px, 1fr)); gap:8px; margin-top:8px; }
 .iconpick .ico{ width:100%; height:44px; border:0; cursor:pointer; padding:0; background:var(--bg); color:var(--muted); }
 .iconpick .ico[aria-pressed="true"]{ background:color-mix(in srgb, var(--c) 22%, var(--surface)); color:var(--c); box-shadow:inset 0 0 0 2px var(--c); }
@@ -406,6 +410,12 @@ input[type="range"]::-moz-range-thumb{ width:20px; height:20px; border-radius:50
 .dedrow + .dedrow{ border-top:1px solid var(--line); }
 .dtop{ display:flex; align-items:center; gap:var(--s2); }
 .dtop .name-input{ flex:1; }
+.grip{ flex:none; width:26px; height:36px; margin-left:-8px; padding:0; border:0; background:transparent; color:var(--muted); display:grid; place-items:center; cursor:grab; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; border-radius:8px; }
+.grip svg{ width:10px; height:16px; fill:currentColor; display:block; }
+.shead .grip{ margin-right:-4px; }
+.sorting{ -webkit-user-select:none; user-select:none; }
+.sorting > *:not(.dragging){ transition:transform .15s ease; }
+.dragging{ position:relative; z-index:5; background:var(--surface); box-shadow:0 8px 24px rgba(0,0,0,.22); border-radius:var(--r-ctl, 12px); cursor:grabbing; }
 .dbot{ display:flex; align-items:center; gap:var(--s3); margin-top:var(--s1); }
 .dbot small{ color:var(--muted); font-size:.84rem; }
 .paysum{ display:flex; justify-content:space-between; gap:var(--s3); padding:var(--s3) var(--s4); border-top:1px solid var(--line); font-weight:700; }
@@ -543,7 +553,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       </div>
 
       <div class="section-row"><h3>Taken out of your paycheck
-        <button class="info" type="button" aria-label="About paycheck deductions" data-tip="Amounts your job takes out before you’re paid, like federal and state tax, Social Security, Medicare, a 401(k), or health insurance. Once you add one, enter your pay before deductions above and the app works out your take-home pay. Your pay stub lists the exact amounts.">i</button></h3>
+        <button class="info" type="button" aria-label="About paycheck deductions" data-tip="Amounts your job takes out before you’re paid, like federal and state tax, Social Security, Medicare, a 401(k), or health insurance. Once you add one, enter your pay before deductions above and the app works out your take-home pay. Your pay stub lists the exact amounts. Drag the dots on the left to reorder them.">i</button></h3>
         <span class="aside" id="dedTotal"></span>
       </div>
       <div class="card">
@@ -572,7 +582,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       </div>
 
       <div class="section-row"><h3>Categories
-        <button class="info" type="button" aria-label="About categories" data-tip="Each category gets a set dollar amount or a share of what’s left. Set amounts come out first, then the sliders split the rest and stop at 100%. Tap a category to rename it, change its icon or budget, or remove it.">i</button></h3>
+        <button class="info" type="button" aria-label="About categories" data-tip="Each category gets a set dollar amount or a share of what’s left. Set amounts come out first, then the sliders split the rest and stop at 100%. Tap a category to rename it, change its icon or photo, or change its budget. Drag the dots on the left to put them in your own order.">i</button></h3>
         <span class="aside" id="leftAmt"></span>
       </div>
       <div class="card">
@@ -1293,9 +1303,10 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   });
 
   function renderSplits(){
+    var many = splitKeys().length > 1;
     $("#splits").innerHTML = splitKeys().map(function(k){
       var m = segMeta(k), custom = !BUILTIN[k], subs = subsOf(k);
-      var head = '<div class="shead"><button class="catname" data-edit="' + k + '" aria-label="Edit ' + esc(m.name) + '"><span class="ico sm" style="--c:' + m.color + '">' + m.e + '</span><strong>' + esc(m.name) + '</strong></button>' +
+      var head = '<div class="shead">' + (many ? gripHTML(m.name) : '') + '<button class="catname" data-edit="' + k + '" aria-label="Edit ' + esc(m.name) + '"><span class="ico sm" style="--c:' + m.color + '">' + m.e + '</span><strong>' + esc(m.name) + '</strong></button>' +
         '<span class="pct" id="pct-' + k + '"></span><span class="val" id="val-' + k + '"></span><button class="x sm" data-catrm="' + k + '" aria-label="Remove ' + esc(m.name) + '">×</button></div>';
       var range = isFixed(k) ? '<div class="fixedrow"><span class="field amt"><span>$</span><input data-fixed="' + k + '" inputmode="decimal" autocomplete="off" placeholder="0" value="' + esc(P().fixed[k]) + '" aria-label="' + esc(m.name) + ' amount per month"></span><span class="gline" style="margin:0">a month</span></div>' : '<input type="range" min="0" max="100" step="1" data-k="' + k + '" value="' + (+P().split[k] || 0) + '" style="--c:' + m.color + '" aria-label="' + esc(segName(k)) + ' percent">';
       var subsHTML = subs.map(function(s){
@@ -1315,6 +1326,11 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     }).join("");
     refreshRanges();
   }
+  sortable($("#splits"), ".srow", function(from, to){
+    var ks = splitKeys(); moveItem(ks, from, to);
+    P().keys = ks.concat(P().keys.filter(function(k){ return ks.indexOf(k) < 0; }));
+    commit(); renderSplits(); update();
+  });
   $("#splits").addEventListener("input", function(e){
     var t = e.target;
     if(t.type === "range"){
@@ -2443,7 +2459,9 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     cap:"M12 3l11 5-11 5L1 8zm-6 7.5l6 2.7 6-2.7V15c0 1.7-2.7 3-6 3s-6-1.3-6-3z",
     card:"M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm0 3v3h20V9z"
   };
+  function isPhoto(spec){ return !!(spec && spec.t === "i" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(spec.v || "")); }
   function iconInner(spec, name){
+    if(isPhoto(spec)) return '<img class="icoimg" src="' + spec.v + '" alt="">';
     if(spec && spec.t === "g" && GLYPHS[spec.v]) return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="' + GLYPHS[spec.v] + '"/></svg>';
     var t = spec && spec.t === "l" && spec.v ? spec.v : initial(name);
     return esc(String(t).slice(0, 2));
@@ -2454,16 +2472,45 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       COLORS.map(function(c){ return '<button class="sw big" data-color="' + c + '" style="background:' + c + '" aria-pressed="' + (c === color) + '" aria-label="Color"></button>'; }).join("") + '</div>' +
       '<div class="label-row" style="margin-top:16px">Icon</div><div class="iconpick" style="--c:' + color + '">' +
       Object.keys(GLYPHS).map(function(g){ return '<button class="ico" data-glyph="' + g + '" aria-pressed="' + (spec && spec.t === "g" && spec.v === g) + '" aria-label="' + g + ' icon">' + iconInner({ t:"g", v:g }) + '</button>'; }).join("") +
-      '</div><label class="inrow" style="margin:10px 0 0;align-items:center"><span class="field" style="max-width:110px;flex:none"><input data-letter="1" maxlength="2" autocomplete="off" placeholder="Aa" value="' + (spec && spec.t === "l" ? esc(spec.v) : "") + '" aria-label="Letters for the icon"></span><span class="gline" style="margin:0">or use one or two letters</span></label>';
+      '</div><label class="inrow" style="margin:10px 0 0;align-items:center"><span class="field" style="max-width:110px;flex:none"><input data-letter="1" maxlength="2" autocomplete="off" placeholder="Aa" value="' + (spec && spec.t === "l" ? esc(spec.v) : "") + '" aria-label="Letters for the icon"></span><span class="gline" style="margin:0">or use one or two letters</span></label>' +
+      photoHTML(spec);
+  }
+  function photoHTML(spec){
+    var has = isPhoto(spec);
+    return '<div class="photopick">' + (has ? '<span class="ico big">' + iconInner(spec) + '</span>' : '') +
+      '<label class="chip">' + (has ? 'Change photo' : 'Use a photo') + '<input type="file" accept="image/*" data-photo="1" hidden></label>' +
+      (has ? '<button class="chip" type="button" data-nophoto="1">Remove photo</button>' : '') + '</div>';
+  }
+  function shrinkPhoto(file, done){
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var S = 160, side = Math.min(img.naturalWidth, img.naturalHeight), cv = document.createElement("canvas");
+      cv.width = cv.height = S;
+      var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, S, S);
+      cx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, S, S);
+      URL.revokeObjectURL(url); done(cv.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); done(null); };
+    img.src = url;
   }
   function bindPicker(root, draft, onChange){
     root.addEventListener("click", function(e){
       var b = e.target.closest("button"); if(!b) return;
       if(b.dataset.color){ draft.color = b.dataset.color; onChange(true); }
-      if(b.dataset.glyph){ draft.icon = { t:"g", v:b.dataset.glyph }; onChange(true); }
+      if(b.dataset.glyph){ draft.icon = { t:"g", v:b.dataset.glyph }; onChange(true); syncPhoto(); }
+      if(b.dataset.nophoto){ draft.icon = null; onChange(true); syncPhoto(); }
+    });
+    function syncPhoto(){ var p = root.querySelector(".photopick"); if(p) p.outerHTML = photoHTML(draft.icon); }
+    root.addEventListener("change", function(e){
+      var f = e.target.dataset.photo && e.target.files && e.target.files[0]; if(!f) return;
+      shrinkPhoto(f, function(v){
+        if(!v){ toast("That photo couldn’t be opened. Try another one."); return; }
+        draft.icon = { t:"i", v:v }; onChange(true); syncPhoto();
+        var li = root.querySelector("[data-letter]"); if(li) li.value = "";
+      });
     });
     root.addEventListener("input", function(e){
-      if(e.target.dataset.letter){ var v = e.target.value.trim(); draft.icon = v ? { t:"l", v:v } : null; onChange(false); }
+      if(e.target.dataset.letter){ var v = e.target.value.trim(); draft.icon = v ? { t:"l", v:v } : null; onChange(false); syncPhoto(); }
     });
   }
 
@@ -3028,11 +3075,62 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
 
 
 
+  /* ---------- drag to reorder ---------- */
+  var GRIP = '<svg viewBox="0 0 10 16" aria-hidden="true"><circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/><circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/><circle cx="2.5" cy="13.5" r="1.5"/><circle cx="7.5" cy="13.5" r="1.5"/></svg>';
+  function gripHTML(label){ return '<button class="grip" type="button" data-grip="1" aria-label="Move ' + esc(label) + '. Drag, or use the up and down arrow keys.">' + GRIP + '</button>'; }
+  function moveItem(arr, from, to){ arr.splice(to, 0, arr.splice(from, 1)[0]); }
+  function sortable(box, rowSel, onDrop){
+    function rowsOf(){ return Array.prototype.filter.call(box.children, function(r){ return r.matches(rowSel); }); }
+    box.addEventListener("keydown", function(e){
+      var g = e.target.closest("[data-grip]"); if(!g || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+      var rows = rowsOf(), from = rows.indexOf(g.closest(rowSel)), to = from + (e.key === "ArrowUp" ? -1 : 1);
+      if(from < 0 || to < 0 || to >= rows.length) return;
+      e.preventDefault(); onDrop(from, to);
+      var again = rowsOf()[to]; if(again){ var ng = again.querySelector("[data-grip]"); if(ng) ng.focus(); }
+    });
+    box.addEventListener("click", function(e){ if(e.target.closest("[data-grip]")) e.stopPropagation(); }, true);
+    box.addEventListener("pointerdown", function(e){
+      var g = e.target.closest("[data-grip]"); if(!g || e.button > 0) return;
+      var rows = rowsOf(), row = g.closest(rowSel), from = rows.indexOf(row); if(from < 0 || rows.length < 2) return;
+      e.preventDefault();
+      var sy0 = window.scrollY, rects = rows.map(function(r){ var b = r.getBoundingClientRect(); return { top:b.top + sy0, h:b.height }; });
+      var y0 = e.clientY, lastY = y0, to = from, h0 = rects[from].h, speed = 0, raf = 0;
+      try{ g.setPointerCapture(e.pointerId); }catch(err){}
+      box.classList.add("sorting"); row.classList.add("dragging");
+      function place(){
+        var dy = lastY - y0 + window.scrollY - sy0, mid = rects[from].top + h0 / 2 + dy;
+        row.style.transform = "translateY(" + dy + "px)";
+        to = 0; rects.forEach(function(r, i){ if(i !== from && r.top + r.h / 2 < mid) to++; });
+        rows.forEach(function(r, i){
+          if(i === from) return;
+          var shift = (i > from && i <= to) ? -h0 : (i < from && i >= to) ? h0 : 0;
+          r.style.transform = shift ? "translateY(" + shift + "px)" : "";
+        });
+      }
+      function tick(){ if(!speed){ raf = 0; return; } window.scrollBy(0, speed); place(); raf = requestAnimationFrame(tick); }
+      function move(ev){
+        lastY = ev.clientY;
+        var bottom = window.innerHeight - 90;
+        speed = lastY < 70 ? -Math.ceil((70 - lastY) / 5) : lastY > bottom ? Math.ceil((lastY - bottom) / 5) : 0;
+        if(speed && !raf) raf = requestAnimationFrame(tick);
+        place();
+      }
+      function end(){
+        speed = 0; if(raf) cancelAnimationFrame(raf);
+        g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", end); g.removeEventListener("pointercancel", end);
+        box.classList.remove("sorting"); row.classList.remove("dragging");
+        rows.forEach(function(r){ r.style.transform = ""; });
+        if(to !== from) onDrop(from, to);
+      }
+      g.addEventListener("pointermove", move); g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end);
+    });
+  }
+
   /* ---------- paycheck deductions ---------- */
   var DED_QUICK = [["Federal tax","amt",""],["State tax","amt",""],["Social Security","pct","6.2"],["Medicare","pct","1.45"],["401(k)","pct",""],["Health insurance","amt",""],["Other","amt",""]];
   function renderDeds(){
     $("#deds").innerHTML = deds().map(function(d){
-      return '<div class="dedrow" data-did="' + d.id + '"><div class="dtop"><input class="name-input" data-dk="name" value="' + esc(d.name) + '" placeholder="Name it" aria-label="Deduction name" autocomplete="off">' +
+      return '<div class="dedrow" data-did="' + d.id + '"><div class="dtop">' + (deds().length > 1 ? gripHTML(d.name || "deduction") : '') + '<input class="name-input" data-dk="name" value="' + esc(d.name) + '" placeholder="Name it" aria-label="Deduction name" autocomplete="off">' +
         '<button class="x sm" data-drm="1" aria-label="Remove ' + esc(d.name || "deduction") + '">×</button></div>' +
         '<div class="dbot"><span class="field amt" style="width:112px">' + (d.type === "pct" ? '' : '<span>$</span>') + '<input data-dk="value" inputmode="decimal" autocomplete="off" placeholder="0" value="' + esc(d.value) + '" aria-label="Amount">' + (d.type === "pct" ? '<span>%</span>' : '') + '</span>' +
         '<span class="unitseg"><button data-dunit="amt" aria-pressed="' + (d.type !== "pct") + '" aria-label="Dollar amount">$</button><button data-dunit="pct" aria-pressed="' + (d.type === "pct") + '" aria-label="Percent of pay">%</button></span>' +
@@ -3065,6 +3163,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     if(last){ var inp = q[0] === "Other" ? last.querySelector('[data-dk="name"]') : last.querySelector('[data-dk="value"]'); if(inp) inp.focus(); }
     if(first) toast("Now enter your pay before deductions at the top.");
   });
+  sortable($("#deds"), ".dedrow", function(from, to){ moveItem(deds(), from, to); save(); renderDeds(); update(); });
   $("#deds").addEventListener("input", function(e){
     var row = e.target.closest("[data-did]"); if(!row) return;
     var d = deds().find(function(x){ return x.id === row.dataset.did; }); if(!d) return;
