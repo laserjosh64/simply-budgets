@@ -11,15 +11,40 @@ Simply Budgets is a free budget app that runs on your phone. You track everythin
 
 It then opens full screen from its own icon and works offline.
 
+## The four tabs
+
+- **Home:** spending money left, this month's categories (tap one to log a purchase), your goals, the Retirement card, and recent purchases.
+- **Plan:** your paycheck, what's taken out of it, your categories, recurring bills, and student loans.
+- **Activity:** everything you've logged as a list or by month, the bank file check, and spreadsheet downloads.
+- **Accounts:** balances (checking, savings, emergency, card owed), goals, debts, and a savings projection.
+
 ## What it does
 
+**Pay and deductions**
 - Works from your take-home pay, or from your pay before deductions with taxes, Social Security, Medicare, 401(k), and anything else taken out first.
-- Every category is yours to rename, recolor, give an icon, or remove. Give each one a set amount or a share of what’s left, with sliders that stop at 100%.
-- Ways to log spending: type it in, scan a receipt (it reads the store and total on your phone and learns your stores), split one receipt across categories by highlighting the photo, or check a bank export file once a week to catch anything missed.
-- Balances update themselves from what you log. Paydays add your paycheck to checking and roll to the next one.
-- Goals that read from your accounts and plan: save up, emergency cushion, pay off a debt, or keep a minimum.
+- **Retirement match:** mark which deductions go to retirement (401(k), pension, SERS and similar are picked out by name) and add your employer's match as a % of your contribution, a % of pay, or a set dollar amount.
+- Drag deductions by their grip to put them in the order you like.
+
+**Categories**
+- Every category is yours to rename, recolor, give an icon or your own photo, or remove. Drag them to reorder; the same order shows on Home.
+- Give each one a set amount or a share of what's left, with sliders that stop at 100%.
+- Choose what happens to money left over at the end of the month: it rolls over (overspending carries too), or it moves to an account and is added to next month's amount for the saving category you pick.
+- Presets: 50/30/20, pay yourself first, and even split, with Revert to undo.
+
+**Logging spending**
+- Type it in, or scan a receipt. The scan reads the store, each item and its price, and lets you put each item in its own category. Tax and fees are shared out by each category's part of the total. It learns your stores.
+- Recurring bills and subscriptions, taken off the top of your paycheck or out of one category's budget (like Netflix out of Personal).
+- A weekly check-in against a bank export file (CSV or OFX) to catch anything you missed.
+
+**Balances, goals, and debt**
+- Balances update themselves from what you log. Paydays add your paycheck to checking and roll to the next one. Credit card spending is tracked until you mark the card paid.
+- Goals that read from your accounts and plan: save up, emergency cushion, pay off a debt, or keep a minimum. Goals can hold sub-goals and their own photo.
 - Debt payoff with the snowball or avalanche method.
-- Presets (50/30/20, pay yourself first, even split), rollover categories, saved budgets, a 3-year savings projection, and a month-by-month spreadsheet you can download.
+- **Student loans** sit in their own section of Plan with monthly interest added. They're kept out of the snowball and avalanche plan.
+- **Retirement card** on Home: start from your latest statement balance, and each month's contributions and match are added. Tap it for a month-by-month list or to update the balance.
+
+**Saving your work**
+- Saved budgets, a 3-year savings projection, and CSV downloads (monthly totals or every purchase) that open in Excel, Google Sheets, or Numbers.
 
 ## Privacy
 
