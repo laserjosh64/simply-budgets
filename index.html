@@ -491,6 +491,30 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
 .swpick{ display:flex; flex-wrap:wrap; gap:var(--s2); }
 .btn.soft{ font-weight:600; }
 .scanbtn{ border-radius:var(--r-ctl); }
+/* ---- over budget: make room + criticism ---- */
+.overbar{ display:flex; align-items:center; gap:var(--s3); margin:0 0 var(--s3); padding:var(--s3) var(--s3) var(--s3) var(--s4); border-radius:var(--r-ctl); background:color-mix(in srgb, var(--danger) 12%, var(--surface)); color:var(--ink); font-size:.92rem; }
+.overbar span{ flex:1; }
+.overbar strong{ color:var(--danger); }
+.overbar .chip{ border-color:var(--danger); color:var(--danger); font-weight:700; }
+.scold{ --sv:var(--gas); border-radius:var(--r-card); padding:var(--s4); background:color-mix(in srgb, var(--sv) 14%, var(--surface)); border:1.5px solid color-mix(in srgb, var(--sv) 55%, transparent); }
+.scold[data-tier="1"]{ --sv:#D0702A; }
+.scold[data-tier="2"], .scold[data-tier="3"], .scold[data-tier="4"]{ --sv:var(--danger); }
+.scold[data-tier="3"]{ border-width:2px; }
+.scold[data-tier="4"]{ border-width:3px; background:color-mix(in srgb, var(--danger) 24%, var(--surface)); }
+.scold .sv-top{ display:flex; align-items:center; justify-content:space-between; gap:var(--s2); }
+.scold h3{ margin:0; font-size:1.15rem; font-weight:800; color:var(--sv); }
+.scold[data-tier="4"] h3{ font-size:1.3rem; text-transform:uppercase; letter-spacing:.02em; }
+.scold p{ margin:var(--s2) 0 0; line-height:1.45; }
+.scold .sv-meter{ display:flex; gap:3px; flex:none; }
+.scold .sv-meter i{ width:14px; height:6px; border-radius:3px; background:color-mix(in srgb, var(--sv) 22%, transparent); }
+.scold .sv-meter i.on{ background:var(--sv); }
+.rmrow .field{ width:112px; flex:none; min-height:40px; }
+.rmrow .mid{ flex:1; min-width:0; }
+.rmrow .mid small{ display:block; color:var(--muted); font-size:.84rem; }
+.rmrow .mid strong{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rmneed{ display:flex; justify-content:space-between; align-items:baseline; margin:var(--s4) var(--s1) 0; font-weight:600; }
+.rmneed strong{ font-size:1.25rem; font-weight:800; }
+.rmneed.ok strong{ color:var(--savings); }
 </style>
 </head>
 <body>
@@ -748,9 +772,10 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1">
   <div class="grab"></div>
   <div class="sheet-top"><h2 id="sheetTitle">Log a purchase</h2>
-    <span style="display:flex;gap:4px;align-items:center"><button class="scanbtn" id="scanBtn">Scan receipt</button><button class="x" id="sheetClose" aria-label="Close">×</button></span></div>
+    <span style="display:flex;gap:4px;align-items:center"><button class="scanbtn" id="itemBtn">Itemize</button><button class="scanbtn" id="scanBtn">Scan receipt</button><button class="x" id="sheetClose" aria-label="Close">×</button></span></div>
   <label class="amountfield"><span>$</span><input id="sAmount" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="0.00" aria-label="Amount"></label>
   <p class="err" id="sErr" role="alert" style="text-align:center;margin:0 0 4px"></p>
+  <div class="overbar" id="sOver" hidden></div>
   <div class="namefield"><input id="sName" autocomplete="off" placeholder="Where? (optional)" aria-label="Store or description"></div>
   <div class="hscroll" id="sRecents" aria-label="Recent places"></div>
   <div class="hscroll" id="sCats" role="group" aria-label="Category"></div>
@@ -854,6 +879,21 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   </div>
 </div>
 
+<div class="modal" id="roomModal" role="dialog" aria-modal="true" aria-labelledby="roomTitle">
+  <div class="in">
+    <div class="mhead"><h2 id="roomTitle">Make room</h2><button class="x" id="roomClose" aria-label="Close">×</button></div>
+    <div class="scold" id="roomScold" role="status"></div>
+    <div class="section-row"><h3>Take it from
+      <button class="info" type="button" aria-label="About making room" data-tip="Moves part of another category’s budget into this one for this month only. Your plan doesn’t change. Next month every category goes back to its normal amount.">i</button></h3>
+      <button class="link" id="roomFill">Fill it for me</button></div>
+    <div class="card" id="roomList"></div>
+    <div class="rmneed" id="roomNeed"></div>
+    <p class="gline" id="roomNote"></p>
+    <div id="roomPastWrap" hidden><div class="section-row"><h3>Already moved this month</h3></div><div class="card" id="roomPast"></div></div>
+    <button class="btn" id="roomGo" style="margin-top:16px">Move it</button>
+  </div>
+</div>
+
 <div class="modal" id="receiptModal" role="dialog" aria-modal="true" aria-labelledby="rcTitle">
   <div class="in">
     <div class="mhead"><h2 id="rcTitle">Receipt</h2><button class="x" id="rcClose" aria-label="Close">×</button></div>
@@ -909,7 +949,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     return {
       v:2, name:"", pay:{ amount:"", freq:"month", deductions:[] }, plan:defaultPlan(), segDefs:{},
       acct:{ checking:"", savings:"", emergency:"", card:"", payday:"", cardDue:"", notes:"", updated:null, confirmedAt:{}, spendFrom:"checking", cardApr:"", cardMin:"", lastPay:"" },
-      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, transfers:[], retire:{ start:"", from:"", since:"", hist:{} }, installDismissed:false
+      log:[], history:[], saved:[], proj:{ freq:"month", years:["","",""], apy:"", track:"all", subs:true }, monthPlans:{}, autoSkips:{}, recon:{ last:null, snooze:null }, bankHist:[], seenTx:{}, rules:{}, recDismiss:{}, ocr:{ names:{}, items:{}, totals:{} }, goals:[], debts:[], debtCfg:{ method:"snowball", monthly:"" }, payLog:[], paydayDone:{}, transfers:[], retire:{ start:"", from:"", since:"", hist:{} }, shifts:{}, installDismissed:false
     };
   }
   function load(){
@@ -946,7 +986,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
         v:2, name:s.name || "", pay:(function(){ var pp = Object.assign(d.pay, s.pay || {}); if(!Array.isArray(pp.deductions)) pp.deductions = []; return pp; })(), plan:plan, segDefs:s.segDefs || {},
         acct:acct0, log:Array.isArray(s.log) ? s.log : [], goals:goals0, debts:Array.isArray(s.debts) ? s.debts : [], debtCfg:Object.assign({ method:"snowball", monthly:"" }, s.debtCfg || {}), payLog:Array.isArray(s.payLog) ? s.payLog : [], paydayDone:s.paydayDone || {}, transfers:Array.isArray(s.transfers) ? s.transfers : [], retire:Object.assign({ start:"", from:"", since:"", hist:{} }, s.retire || {}),
         history:Array.isArray(s.history) ? s.history : [], saved:Array.isArray(s.saved) ? s.saved : [],
-        proj:proj, monthPlans:s.monthPlans || {}, autoSkips:s.autoSkips || {}, recon:Object.assign({ last:null, snooze:null }, s.recon || {}), bankHist:Array.isArray(s.bankHist) ? s.bankHist : [], seenTx:s.seenTx || {}, rules:s.rules || {}, recDismiss:s.recDismiss || {}, ocr:Object.assign({ names:{}, items:{}, totals:{} }, s.ocr || {}), installDismissed:!!s.installDismissed
+        proj:proj, monthPlans:s.monthPlans || {}, autoSkips:s.autoSkips || {}, recon:Object.assign({ last:null, snooze:null }, s.recon || {}), bankHist:Array.isArray(s.bankHist) ? s.bankHist : [], seenTx:s.seenTx || {}, rules:s.rules || {}, recDismiss:s.recDismiss || {}, ocr:Object.assign({ names:{}, items:{}, totals:{} }, s.ocr || {}), shifts:(s.shifts && typeof s.shifts === "object") ? s.shifts : {}, installDismissed:!!s.installDismissed
       };
     }catch(e){ return defaults(); }
   }
@@ -1129,6 +1169,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     if(isSave){ var done = s >= b && b > 0; right = done ? "Done" : fmtSmart(Math.max(0, b - s)); rlab = done ? "" : "to go"; sub = fmtSmart(s) + " of " + fmt(b) + " moved"; }
     else { over = s > b + 0.004; right = over ? fmtSmart(s - b) : fmtSmart(b - s); rlab = over ? "over" : "left"; sub = fmtSmart(s) + " of " + fmt(b); }
     if(hasSubs) sub = "Main: " + sub;
+    var mv = shiftNote(k, null); if(mv) sub += ", " + mv;
     var cr = isSave ? 0 : carryFor(k, LC || calc());
     if(Math.abs(cr) > 0.5) sub += cr > 0 ? ", " + fmt(cr) + " rolled over" : ", " + fmt(-cr) + " short from last month";
     var swp = !isSave && (P().sweep || {})[k];
@@ -1156,6 +1197,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       right = over ? fmtSmart(spent - b) : fmtSmart(b - spent); rlab = over ? "over" : "left"; sub = fmtSmart(spent) + " of " + fmt(b);
     }
     sub = (s.auto ? "Auto from " : "From ") + segName(k) + ": " + sub;
+    var mv = shiftNote(k, s.id); if(mv) sub += ", " + mv;
     return '<button class="lrow sub' + (over ? " over" : "") + '" data-log="' + k + '" data-sub="' + s.id + '" aria-label="Log ' + esc(s.name || "sub-goal") + '">' +
       '<span class="ico sm" style="--c:' + m.color + '">' + initial(s.name || m.name) + '</span>' +
       '<span class="mid" style="--c:' + m.color + '"><strong>' + esc(s.name || "Sub-goal") + '</strong><small>' + sub + '</small><span class="mini"><i style="width:' + pct.toFixed(1) + '%"></i></span></span>' +
@@ -1168,7 +1210,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var sp = spentIn(thisMonth);
     function subIds(k){ var o = {}; subsOf(k).forEach(function(s){ o[s.id] = 1; }); return o; }
     function S(k){ if(!sp[k]) return 0; var ids = subIds(k), t = sp[k].total; for(var id in sp[k].subs){ if(ids[id]) t -= sp[k].subs[id]; } return t; }
-    function B(k){ var b = c.amt[k] || 0; subsOf(k).forEach(function(s){ b -= (c.sub[k] || {})[s.id] || 0; }); return Math.max(0, b) + carryFor(k, c); }
+    function B(k){ var b = c.amt[k] || 0; subsOf(k).forEach(function(s){ b -= (c.sub[k] || {})[s.id] || 0; }); return Math.max(0, b) + carryFor(k, c) + shiftNet(thisMonth, k, null); }
     var spendKeys = splitKeys().filter(function(k){ return !segMeta(k).save; });
     var budget = Math.round(spendKeys.reduce(function(a, k){ return a + B(k); }, 0)), used = spendKeys.reduce(function(a, k){ return a + S(k); }, 0), left = budget - used;
     var big = $("#heroLeft");
@@ -1180,7 +1222,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     renderPayCard(c);
     $("#homeCats").innerHTML = spendCats().map(function(k){
       return topRow(k, B(k), S(k), subsOf(k).length > 0) + subsOf(k).map(function(s){
-        return subRow(k, s, (c.sub[k] || {})[s.id] || 0, (sp[k] && sp[k].subs[s.id]) || 0);
+        return subRow(k, s, ((c.sub[k] || {})[s.id] || 0) + shiftNet(thisMonth, k, s.id), (sp[k] && sp[k].subs[s.id]) || 0);
       }).join("");
     }).join("");
     var recent = state.log.slice().sort(sortEntries).slice(0,4);
@@ -1747,15 +1789,158 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     spendCats().forEach(function(k){
       var b = c.amt[k] || 0, ids = {};
       subsOf(k).forEach(function(s){ b -= (c.sub[k] || {})[s.id] || 0; ids[s.id] = 1; });
+      b = Math.max(0, b) + shiftNet(thisMonth, k, null);
       var used = sp[k] ? sp[k].total : 0;
       if(sp[k]) for(var id in sp[k].subs){ if(ids[id]) used -= sp[k].subs[id]; }
-      out[k] = Math.round(Math.max(0, b) - used);
+      out[k] = Math.round(b - used);
     });
     return out;
   }
   function catLabel(k){ var m = segMeta(k); return m.save ? (BUILTIN[k] ? "To " + m.name.toLowerCase() : m.name) : segName(k); }
   function openModal(sel){ $(sel).classList.add("open"); $("#main").inert = true; closeTip(); }
   function closeModal(sel){ $(sel).classList.remove("open"); if(!document.querySelector(".modal.open") && !$("#sheet").classList.contains("open")) $("#main").inert = false; }
+
+  /* ---------- over budget: move money in for this month only ---------- */
+  function shiftsIn(ym){ var o = state.shifts || (state.shifts = {}); return o[ym] || []; }
+  function sameSub(a, b){ return (a || null) === (b || null); }
+  function shiftNet(ym, k, sid){
+    return shiftsIn(ym).reduce(function(a, s){
+      if(s.to === k && sameSub(s.toSub, sid)) a += s.amount;
+      if(s.from === k && sameSub(s.fromSub, sid)) a -= s.amount;
+      return a;
+    }, 0);
+  }
+  function shiftCatNet(ym, k){ return shiftsIn(ym).reduce(function(a, s){ return a + (s.to === k ? s.amount : 0) - (s.from === k ? s.amount : 0); }, 0); }
+  function slotName(k, sid){ var s = sid ? findSub(k, sid) : null; return s ? (s.name || "Sub-goal") : segName(k); }
+  function shiftNote(k, sid){
+    var into = {}, out = {};
+    shiftsIn(thisMonth).forEach(function(s){
+      if(s.to === k && sameSub(s.toSub, sid)){ var a = slotName(s.from, s.fromSub); into[a] = (into[a] || 0) + s.amount; }
+      if(s.from === k && sameSub(s.fromSub, sid)){ var b = slotName(s.to, s.toSub); out[b] = (out[b] || 0) + s.amount; }
+    });
+    var bits = [];
+    Object.keys(into).forEach(function(n){ bits.push(fmtSmart(into[n]) + " borrowed from " + n); });
+    Object.keys(out).forEach(function(n){ bits.push(fmtSmart(out[n]) + " lent to " + n); });
+    return bits.join(", ");
+  }
+  // This month's budget and spending for a category's main part (sid null) or one of its sub-goals, with moves included.
+  function slotInfo(k, sid, c){
+    c = c || LC || calc();
+    var sp = spentIn(thisMonth)[k], b, used;
+    if(sid){ b = (c.sub[k] || {})[sid] || 0; used = (sp && sp.subs[sid]) || 0; }
+    else {
+      var ids = {}; b = c.amt[k] || 0;
+      subsOf(k).forEach(function(s){ b -= (c.sub[k] || {})[s.id] || 0; ids[s.id] = 1; });
+      b = Math.max(0, b) + carryFor(k, c); used = sp ? sp.total : 0;
+      if(sp) for(var id in sp.subs){ if(ids[id]) used -= sp.subs[id]; }
+    }
+    var inflow = shiftsIn(thisMonth).reduce(function(a, s){ return a + (s.to === k && sameSub(s.toSub, sid) ? s.amount : 0); }, 0);
+    b += shiftNet(thisMonth, k, sid);
+    return { budget:b, spent:used, left:b - used, inflow:inflow };
+  }
+  function canBorrowFor(k, sid){
+    if(sid){ var s = findSub(k, sid); return !!s && !s.auto && !(num(s.target) > 0); }
+    return !segMeta(k).save;
+  }
+  function moveBatches(){ var seen = {}; shiftsIn(thisMonth).forEach(function(s){ seen[s.batch || s.id] = 1; }); return Object.keys(seen).length; }
+  function scoldFor(name, pct, noBudget, times){
+    var p = Math.round(pct), tier = noBudget ? 4 : pct < 10 ? 0 : pct < 25 ? 1 : pct < 50 ? 2 : pct < 100 ? 3 : 4;
+    var T = [
+      ["A little over", "You went " + p + "% over on " + name + ". It’s small, but small slips are how a budget drifts. Check what’s left before you buy next time."],
+      ["Over budget", p + "% over on " + name + " isn’t a rounding error. Moving money covers this month, but it doesn’t fix the habit that got you here."],
+      ["Well over budget", "You’re " + p + "% over on " + name + ". A budget only works if you stick to it, and shuffling money around after the fact is how a plan quietly falls apart."],
+      ["Way over budget", p + "% over on " + name + ". That’s not a slip, that’s ignoring the plan. Every dollar you take below is money you said you needed somewhere else."],
+      ["Budget blown", noBudget ? "There was nothing set aside for " + name + " this month, and you spent anyway. Every dollar of this comes out of something you planned for." :
+        name + " is at " + (p + 100) + "% of its budget. You more than doubled it. Covering this means your other categories pay for it. This needs a hard look, not just a shuffle."]
+    ];
+    var again = times === 1 ? " This is the second time you’ve moved money this month." : times > 1 ? " You’ve already moved money " + plural(times, "time") + " this month. That’s a pattern, not an accident." : "";
+    return { tier:tier, title:T[tier][0], text:T[tier][1] + again };
+  }
+  var SCOLD_SHORT = ["Stay on top of it next time.", "Don’t make this a habit.", "This can’t keep happening.", "Rein it in.", "This one’s on you. Do better next month."];
+  var room = null;
+  function openRoom(k, sid, extra){
+    var info = slotInfo(k, sid), need = Math.ceil((info.spent + (extra || 0) - info.budget) * 100) / 100;
+    if(need <= 0.004){ toast(slotName(k, sid) + " isn’t over budget."); return; }
+    var orig = info.budget - info.inflow, overOrig = info.spent + (extra || 0) - orig;
+    var sc = scoldFor(slotName(k, sid), orig > 0.5 ? overOrig / orig * 100 : 0, !(orig > 0.5), moveBatches());
+    room = { k:k, sid:sid, need:need, scold:sc, amts:{} };
+    $("#roomTitle").textContent = "Make room in " + slotName(k, sid);
+    $("#roomScold").dataset.tier = sc.tier;
+    $("#roomScold").innerHTML = '<div class="sv-top"><h3>' + esc(sc.title) + '</h3><span class="sv-meter" aria-label="Severity ' + (sc.tier + 1) + ' of 5">' +
+      [0,1,2,3,4].map(function(i){ return '<i' + (i <= sc.tier ? ' class="on"' : '') + '></i>'; }).join("") + '</span></div><p>' + esc(sc.text) + '</p>';
+    renderRoom(); openModal("#roomModal");
+  }
+  function roomSources(){
+    var c = LC || calc(), out = [];
+    spendCats().forEach(function(k){
+      if(k === "bills") return;
+      var m = segMeta(k);
+      if(!(k === room.k && !room.sid)) out.push({ id:k, k:k, sid:null, name:m.name, color:m.color, e:m.e, save:m.save, left:slotInfo(k, null, c).left });
+      subsOf(k).forEach(function(s){
+        if(s.auto || num(s.target) > 0 || (k === room.k && s.id === room.sid)) return;
+        out.push({ id:k + "|" + s.id, k:k, sid:s.id, name:s.name || "Sub-goal", parent:m.name, color:m.color, e:initial(s.name || m.name), save:m.save, sm:true, left:slotInfo(k, s.id, c).left });
+      });
+    });
+    out.forEach(function(x){ x.left = Math.floor(x.left * 100) / 100; });
+    return out.filter(function(x){ return x.left > 0.004; }).sort(function(a, b){ return (a.save - b.save) || (b.left - a.left); });
+  }
+  function roomTotal(){ var t = 0; for(var id in room.amts) t += room.amts[id]; return Math.round(t * 100) / 100; }
+  function renderRoom(){
+    var src = roomSources(); room.src = src;
+    $("#roomList").innerHTML = src.length ? src.map(function(x){
+      var v = room.amts[x.id];
+      return '<div class="lrow rmrow"><span class="ico' + (x.sm ? ' sm' : '') + '" style="--c:' + x.color + '">' + x.e + '</span>' +
+        '<span class="mid"><strong>' + esc(x.name) + '</strong><small>' + (x.parent ? esc(x.parent) + ", " : "") + fmt2(x.left) + (x.save ? " still to move" : " left") + '</small></span>' +
+        '<span class="field amt"><span>$</span><input data-rsrc="' + esc(x.id) + '" inputmode="decimal" autocomplete="off" placeholder="0" value="' + (v ? v.toFixed(2) : "") + '" aria-label="Take from ' + esc(x.name) + '"></span></div>';
+    }).join("") : '<div class="empty">Nothing else has money left this month. There’s nowhere to take it from.</div>';
+    $("#roomFill").hidden = !src.length;
+    var nm = monthName(thisMonth), next = monthName(shiftMonth(thisMonth, 1));
+    $("#roomNote").textContent = "Only for " + nm + ". Your plan doesn’t change, and every category goes back to its normal amount on " + next + " 1.";
+    var past = shiftsIn(thisMonth);
+    $("#roomPastWrap").hidden = !past.length;
+    $("#roomPast").innerHTML = past.map(function(s){
+      return '<div class="lrow">' + cdot(s.to) + '<span class="mid" style="flex:1"><strong>' + fmt2(s.amount) + ' to ' + esc(slotName(s.to, s.toSub)) + '</strong><small style="display:block;color:var(--muted)">from ' + esc(slotName(s.from, s.fromSub)) + '</small></span>' +
+        '<button class="link" data-unshift="' + s.id + '">Undo</button></div>';
+    }).join("");
+    renderRoomNeed();
+  }
+  function renderRoomNeed(){
+    var t = roomTotal(), short = Math.round((room.need - t) * 100) / 100, el = $("#roomNeed");
+    el.className = "rmneed" + (short <= 0.004 ? " ok" : "");
+    el.innerHTML = '<span>' + (short > 0.004 ? "Still need" : "Covered") + '</span><strong>' + (short > 0.004 ? fmt2(short) + " of " + fmt2(room.need) : fmt2(t)) + '</strong>';
+    $("#roomGo").disabled = t <= 0;
+    $("#roomGo").textContent = t > 0 ? "Move " + fmt2(t) + " for " + monthName(thisMonth) + " only" : "Pick where to take it from";
+  }
+  $("#roomList").addEventListener("input", function(e){
+    var id = e.target.dataset.rsrc; if(!id) return;
+    var x = room.src.find(function(s){ return s.id === id; }), v = Math.max(0, Math.round(num(e.target.value) * 100) / 100);
+    if(x && v > x.left) v = x.left;
+    if(v > 0) room.amts[id] = v; else delete room.amts[id];
+    renderRoomNeed();
+  });
+  $("#roomList").addEventListener("focusout", function(e){ var id = e.target.dataset.rsrc; if(!id) return; var v = room.amts[id]; e.target.value = v ? v.toFixed(2) : ""; });
+  $("#roomFill").addEventListener("click", function(){
+    room.amts = {}; var rest = room.need;
+    room.src.forEach(function(x){ if(rest <= 0.004) return; var take = Math.min(x.left, Math.round(rest * 100) / 100); if(take > 0){ room.amts[x.id] = take; rest -= take; } });
+    renderRoom();
+    if(rest > 0.004) toast("Everything left still leaves you " + fmt2(rest) + " short.");
+  });
+  $("#roomPast").addEventListener("click", function(e){
+    var b = e.target.closest("[data-unshift]"); if(!b) return;
+    var list = shiftsIn(thisMonth), i = list.findIndex(function(s){ return s.id === b.dataset.unshift; }); if(i < 0) return;
+    list.splice(i, 1); if(!list.length) delete state.shifts[thisMonth];
+    save(); update(); if($("#sheet").classList.contains("open")) renderSheet();
+    var info = slotInfo(room.k, room.sid); room.need = Math.max(room.need, Math.ceil((info.spent - info.budget) * 100) / 100);
+    renderRoom(); toast("Moved it back.");
+  });
+  $("#roomGo").addEventListener("click", function(){
+    var t = roomTotal(); if(t <= 0) return;
+    var list = state.shifts[thisMonth] || (state.shifts[thisMonth] = []), batch = uid(), now = Date.now();
+    room.src.forEach(function(x){ var a = room.amts[x.id]; if(a > 0) list.push({ id:uid(), batch:batch, ts:now, to:room.k, toSub:room.sid || null, from:x.k, fromSub:x.sid || null, amount:a }); });
+    save(); closeModal("#roomModal"); update(); if($("#sheet").classList.contains("open")) renderSheet();
+    toast("Moved " + fmt2(t) + " into " + slotName(room.k, room.sid) + " for " + monthName(thisMonth) + ". " + SCOLD_SHORT[room.scold.tier]);
+  });
+  $("#roomClose").addEventListener("click", function(){ closeModal("#roomModal"); });
 
   /* ---------- log sheet ---------- */
   var sheetCat = "food", sheetSub = null, sheetReturn = null, sheetDate = todayStr(), catTouched = false;
@@ -1775,7 +1960,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#sCats").innerHTML = cats.map(function(k){
       var m = segMeta(k);
       return '<button class="catpill" data-cat="' + k + '" aria-pressed="' + (k === sheetCat) + '" style="--c:' + m.color + '">' + cdot(k) + '<span>' + esc(catLabel(k)) + '</span>' +
-        (m.save ? '' : '<span class="left">' + fmt(left[k] || 0) + ' left</span>') + '</button>';
+        (m.save ? '' : '<span class="left">' + ((left[k] || 0) < 0 ? fmt(-left[k]) + ' over' : fmt(left[k] || 0) + ' left') + '</span>') + '</button>';
     }).join("");
     var subs = subsOf(sheetCat);
     $("#sSubWrap").hidden = !subs.length;
@@ -1791,6 +1976,13 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     $("#sheetTitle").textContent = segMeta(sheetCat).save ? "Log money saved" : "Log a purchase";
     var subObj = sheetSub ? findSub(sheetCat, sheetSub) : null;
     var amt = sheetAmt();
+    var ob = $("#sOver");
+    if(!canBorrowFor(sheetCat, subObj ? subObj.id : null) || monthOf(sheetDate) !== thisMonth) ob.hidden = true;
+    else {
+      var si = slotInfo(sheetCat, subObj ? subObj.id : null), was = si.spent - si.budget, will = was + amt, nm = esc(subObj ? (subObj.name || "Sub-goal") : segName(sheetCat));
+      ob.hidden = will <= 0.004;
+      if(!ob.hidden) ob.innerHTML = '<span>' + (was > 0.004 ? nm + ' is <strong>' + fmt2(was) + ' over</strong> this month' + (amt > 0 ? ', ' + fmt2(will) + ' with this.' : '.') : 'This puts ' + nm + ' <strong>' + fmt2(will) + ' over</strong> budget.') + '</span><button class="chip" id="sRoom">Make room</button>';
+    }
     $("#sAdd").textContent = amt > 0 ? "Add " + fmt2(amt) + " to " + (subObj && subObj.name ? subObj.name : catLabel(sheetCat)) : "Add";
   }
   function openSheet(cat, sub, from){
@@ -1852,6 +2044,10 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     toast("Added " + fmt2(amount) + " to " + (subObj && subObj.name ? subObj.name : segName(sheetCat)) + ".");
   }
   $("#sAdd").addEventListener("click", addEntry);
+  $("#sOver").addEventListener("click", function(e){
+    if(!e.target.closest("#sRoom")) return;
+    openRoom(sheetCat, sheetSub, sheetAmt());
+  });
 
   /* ---------- receipt scanning ---------- */
   var rc = null, rcToken = 0, tessP = null;
@@ -1969,7 +2165,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     for(i = 0; i < px.length; i += 4){ var nv = (px[i] - lo) * 255 / rng; px[i] = px[i+1] = px[i+2] = nv; }
     g.putImageData(d, 0, 0);
     rc = { W:W, H:H, lines:[], items:[], active:null, mainCat:firstSpend(), ocrDone:false, date:null, mainTouched:false, info:null };
-    $("#rcImg").src = color.toDataURL("image/jpeg", 0.85);
+    $("#rcImg").src = color.toDataURL("image/jpeg", 0.85); $("#rcWrap").hidden = false; $("#rcTitle").textContent = "Receipt";
     var cv = $("#rcCanvas"); cv.width = W; cv.height = H;
     $("#rcName").value = ""; $("#rcTotal").value = ""; $("#rcItemsBox").hidden = true;
     $("#rcStatus").hidden = false; $("#rcProg").parentNode.hidden = false; $("#rcStatusText").textContent = "Reading your receipt…"; $("#rcProg").style.width = "6%";
@@ -1996,6 +2192,26 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       $("#rcProg").style.width = "0";
     }
     renderReceipt(); drawItems();
+  }
+  // Itemize by hand: same screen as a scanned receipt, without a photo.
+  function startItemize(){
+    var amt = sheetAmt(), name = $("#sName").value.trim(), cat = sheetCat, date = sheetDate;
+    closeSheet(); rcToken++;
+    rc = { W:1, H:1, lines:[], items:[], active:null, mainCat:segMeta(cat).save ? firstSpend() : cat, ocrDone:true, date:date, mainTouched:false, info:null, manual:true, totalTouched:amt > 0 };
+    var it = { id:uid(), name:"", amount:"", raw:"", bbox:null, cat:rc.mainCat, touched:true };
+    rc.items.push(it); rc.active = it.id;
+    $("#rcTitle").textContent = "Itemize a purchase"; $("#rcWrap").hidden = true;
+    $("#rcStatus").hidden = false; $("#rcProg").parentNode.hidden = true;
+    $("#rcStatusText").textContent = "Add each item with its price and tap the category it belongs to. If the total is more than the items, the tax and fees get split across the categories.";
+    $("#rcName").value = name; $("#rcTotal").value = amt > 0 ? amt.toFixed(2) : "";
+    openModal("#receiptModal"); renderReceipt();
+    var f = document.querySelector('#rcItems [data-ik="name"]'); if(f) f.focus({ preventScroll:true });
+  }
+  $("#itemBtn").addEventListener("click", startItemize);
+  function manualTotal(){
+    if(!rc || !rc.manual || rc.totalTouched) return;
+    var t = rc.items.reduce(function(a, it){ return a + Math.max(0, num(it.amount)); }, 0);
+    $("#rcTotal").value = t > 0 ? t.toFixed(2) : "";
   }
   function sizeReceipt(){
     if(!rc) return;
@@ -2094,8 +2310,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     }
     if(e.target.closest("[data-irm]")){
       var i = rc.items.indexOf(it), gone = rc.items.splice(i, 1)[0];
-      renderReceipt(); drawItems();
-      toast("Removed " + (gone.name || "item") + ".", "Undo", function(){ rc.items.splice(i, 0, gone); renderReceipt(); drawItems(); });
+      manualTotal(); renderReceipt(); drawItems();
+      toast("Removed " + (gone.name || "item") + ".", "Undo", function(){ rc.items.splice(i, 0, gone); manualTotal(); renderReceipt(); drawItems(); });
       return;
     }
     if(rc.active !== it.id){ rc.active = it.id; document.querySelectorAll("#rcItems .rcitem").forEach(function(r){ r.setAttribute("aria-current", String(r.dataset.iid === it.id)); }); drawItems(); }
@@ -2103,6 +2319,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   $("#rcItems").addEventListener("input", function(e){
     var it = findItem(e.target), k = e.target.dataset.ik; if(!it || !k) return;
     it[k] = e.target.value;
+    if(k === "amount") manualTotal();
     renderBreak();
   });
   $("#rcItems").addEventListener("focusout", function(e){
@@ -2114,7 +2331,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     rc.items.push(it); rc.active = it.id; renderReceipt();
     var row = document.querySelector('#rcItems [data-iid="' + it.id + '"] [data-ik="name"]'); if(row) row.focus();
   });
-  $("#rcTotal").addEventListener("input", renderBreak);
+  $("#rcTotal").addEventListener("input", function(e){ if(rc && rc.manual) rc.totalTouched = e.target.value.trim() !== ""; if(rc && rc.manual && !rc.totalTouched) manualTotal(); renderBreak(); });
   $("#rcName").addEventListener("input", function(e){
     if(!rc || rc.mainTouched) return;
     var gc = guessCat(e.target.value); if(!gc || gc === rc.mainCat) return;
@@ -3339,7 +3556,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   function recordMonthPlan(c){
     if(c.monthly <= 0) return;
     var mp = { income:Math.round(c.monthly * 100) / 100, budgets:{} };
-    spendCats().forEach(function(k){ mp.budgets[k] = Math.round((c.amt[k] || 0) * 100) / 100; });
+    spendCats().forEach(function(k){ mp.budgets[k] = Math.round(((c.amt[k] || 0) + shiftCatNet(thisMonth, k)) * 100) / 100; });
     if(JSON.stringify(state.monthPlans[thisMonth] || null) !== JSON.stringify(mp)){ state.monthPlans[thisMonth] = mp; save(); }
   }
   function syncAuto(c){
