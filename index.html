@@ -76,6 +76,10 @@ button{ -webkit-user-select:none; user-select:none; }
 .lrow.sub{ padding:9px 14px 9px 34px; background:color-mix(in srgb, var(--bg) 40%, transparent); }
 .lrow.sub strong{ font-size:.94rem; }
 button.lrow{ cursor:pointer; }
+#recent .lrow[data-id], #logList .lrow[data-id]{ cursor:pointer; }
+#recent .lrow[data-id]:active, #logList .lrow[data-id]:active{ background:color-mix(in srgb, var(--ink) 6%, transparent); }
+#sDel, #rcDel{ display:block; margin:12px auto 0; color:var(--danger); }
+#sDel[hidden], #rcDel[hidden]{ display:none; }
 button.lrow:active{ background:color-mix(in srgb, var(--ink) 6%, transparent); }
 .ico{ --c:var(--muted); width:40px; height:40px; border-radius:13px; display:grid; place-items:center; font-size:1.2rem; flex:none; background:color-mix(in srgb, var(--c) 18%, transparent); }
 .ico.sm{ width:32px; height:32px; border-radius:10px; font-size:1rem; }
@@ -782,6 +786,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   <div id="sSubWrap" hidden><div class="hscroll" id="sSubs"></div></div>
   <div class="datechips" id="sDates"></div>
   <button class="btn" id="sAdd">Add</button>
+  <button class="link danger" id="sDel" hidden>Delete this entry</button>
 </div>
 
 <div class="updatebar" id="updateBar" role="status" hidden><span>A new version of Simply Budgets is ready.</span><button class="chip accent" id="updateGo">Update</button><button class="x sm" id="updateLater" aria-label="Later">×</button></div>
@@ -902,6 +907,8 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     <div class="card pad gap">
       <div class="label-row">Store</div>
       <span class="field" style="margin:6px 0 14px"><input id="rcName" autocomplete="off" placeholder="Store name" aria-label="Store name"></span>
+      <div class="label-row">Date</div>
+      <span class="field" style="margin:6px 0 14px"><input type="date" id="rcDate" aria-label="Date of purchase"></span>
       <div class="label-row">Total</div>
       <div class="bigmoney" style="font-size:2.2rem"><span>$</span><input id="rcTotal" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Receipt total"></div>
       <div class="label-row" id="rcMainLabel">Put it in</div>
@@ -915,6 +922,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       <div class="card pad" id="rcBreak" style="margin-top:12px"></div>
     </div>
     <button class="btn" id="rcSave" style="margin-top:16px">Log it</button>
+    <button class="link danger" id="rcDel" hidden>Delete this purchase</button>
   </div>
 </div>
 
@@ -1496,14 +1504,33 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       return '<p class="day">' + esc(lab) + '</p><div class="card">' + g.items.map(function(e){ return entryRow(e, true); }).join("") + '</div>';
     }).join("");
   }
-  $("#logList").addEventListener("click", function(e){
-    var id = e.target.dataset.del; if(!id) return;
-    var idx = state.log.findIndex(function(x){ return x.id === id; }); if(idx < 0) return;
-    var removed = state.log.splice(idx, 1)[0], skipKey = removed.auto ? (removed.rec ? "r" + removed.rec : removed.sub) + ":" + monthOf(removed.date) : null;
-    if(skipKey) state.autoSkips[skipKey] = 1;
+  // An automatic entry (recurring bill or auto-savings) is regenerated each month unless that month is skipped.
+  function autoKey(e){ return e.auto ? (e.rec ? "r" + e.rec : e.sub) + ":" + monthOf(e.date) : null; }
+  function skipAuto(e, skips){ var k = autoKey(e); if(k && !state.autoSkips[k]){ state.autoSkips[k] = 1; skips.push(k); } }
+  function removeEntries(ids){
+    var removed = [], skips = [];
+    ids.forEach(function(id){
+      var idx = state.log.findIndex(function(x){ return x.id === id; }); if(idx < 0) return;
+      var r = state.log.splice(idx, 1)[0]; removed.push(r); skipAuto(r, skips);
+    });
+    if(!removed.length) return;
     save(); update();
-    toast("Deleted " + fmt2(num(removed.amount)) + ".", "Undo", function(){ if(skipKey) delete state.autoSkips[skipKey]; state.log.push(removed); save(); update(); });
+    var total = removed.reduce(function(a, r){ return a + num(r.amount); }, 0);
+    toast("Deleted " + fmt2(total) + ".", "Undo", function(){ skips.forEach(function(k){ delete state.autoSkips[k]; }); removed.forEach(function(r){ state.log.push(r); }); save(); update(); });
+  }
+  // Tapping a logged entry opens it with everything you could set when adding it.
+  function openEdit(id, from){
+    var e = state.log.find(function(x){ return x.id === id; }); if(!e) return;
+    var group = e.group ? state.log.filter(function(x){ return x.group === e.group; }) : [e];
+    if(group.length > 1 || group.some(function(x){ return x.items && x.items.length; })) editReceipt(group, from);
+    else openSheet(e.cat, e.sub, from, e);
+  }
+  $("#logList").addEventListener("click", function(e){
+    var id = e.target.dataset.del;
+    if(id) return removeEntries([id]);
+    var row = e.target.closest(".lrow[data-id]"); if(row) openEdit(row.dataset.id, row);
   });
+  $("#recent").addEventListener("click", function(e){ var row = e.target.closest(".lrow[data-id]"); if(row) openEdit(row.dataset.id, row); });
   $("#prevMonth").addEventListener("click", function(){ viewMonth = shiftMonth(viewMonth, -1); renderActivity(); });
   $("#nextMonth").addEventListener("click", function(){ viewMonth = shiftMonth(viewMonth, 1); renderActivity(); });
 
@@ -1943,7 +1970,13 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   $("#roomClose").addEventListener("click", function(){ closeModal("#roomModal"); });
 
   /* ---------- log sheet ---------- */
-  var sheetCat = "food", sheetSub = null, sheetReturn = null, sheetDate = todayStr(), catTouched = false;
+  var sheetCat = "food", sheetSub = null, sheetReturn = null, sheetDate = todayStr(), catTouched = false, sheetEdit = null;
+  // How much this entry adds to its category this month (an edit only adds the difference).
+  function sheetExtra(){
+    var amt = sheetAmt(), o = sheetEdit;
+    if(o && o.cat === sheetCat && (o.sub || null) === (sheetSub || null) && monthOf(o.date) === thisMonth) amt -= num(o.amount);
+    return Math.round(amt * 100) / 100;
+  }
   function sheetAmt(){ return Math.round(num($("#sAmount").value) * 100) / 100; }
   function renderRecents(){
     var seen = {}, list = [];
@@ -1972,24 +2005,26 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var t = todayStr(), y = shiftDay(t, -1), other = sheetDate !== t && sheetDate !== y;
     $("#sDates").innerHTML = '<button class="chip" data-d="' + t + '" aria-pressed="' + (sheetDate === t) + '">Today</button>' +
       '<button class="chip" data-d="' + y + '" aria-pressed="' + (sheetDate === y) + '">Yesterday</button>' +
-      '<input type="date" id="sDatePick" value="' + sheetDate + '" max="' + t + '" aria-label="Pick a date"' + (other ? ' class="on"' : '') + '>';
-    $("#sheetTitle").textContent = segMeta(sheetCat).save ? "Log money saved" : "Log a purchase";
+      '<input type="date" id="sDatePick" value="' + sheetDate + '"' + (sheetDate > t ? '' : ' max="' + t + '"') + ' aria-label="Pick a date"' + (other ? ' class="on"' : '') + '>';
+    $("#sheetTitle").textContent = sheetEdit ? (segMeta(sheetCat).save ? "Edit money saved" : "Edit purchase") : (segMeta(sheetCat).save ? "Log money saved" : "Log a purchase");
+    $("#scanBtn").hidden = !!sheetEdit; $("#sDel").hidden = !sheetEdit;
     var subObj = sheetSub ? findSub(sheetCat, sheetSub) : null;
-    var amt = sheetAmt();
+    var amt = sheetAmt(), extra = sheetExtra();
     var ob = $("#sOver");
     if(!canBorrowFor(sheetCat, subObj ? subObj.id : null) || monthOf(sheetDate) !== thisMonth) ob.hidden = true;
     else {
-      var si = slotInfo(sheetCat, subObj ? subObj.id : null), was = si.spent - si.budget, will = was + amt, nm = esc(subObj ? (subObj.name || "Sub-goal") : segName(sheetCat));
+      var si = slotInfo(sheetCat, subObj ? subObj.id : null), was = si.spent - si.budget, will = was + extra, nm = esc(subObj ? (subObj.name || "Sub-goal") : segName(sheetCat));
       ob.hidden = will <= 0.004;
-      if(!ob.hidden) ob.innerHTML = '<span>' + (was > 0.004 ? nm + ' is <strong>' + fmt2(was) + ' over</strong> this month' + (amt > 0 ? ', ' + fmt2(will) + ' with this.' : '.') : 'This puts ' + nm + ' <strong>' + fmt2(will) + ' over</strong> budget.') + '</span><button class="chip" id="sRoom">Make room</button>';
+      if(!ob.hidden) ob.innerHTML = '<span>' + (was > 0.004 ? nm + ' is <strong>' + fmt2(was) + ' over</strong> this month' + (Math.abs(extra) > 0.004 && will > 0.004 ? ', ' + fmt2(will) + ' with this.' : '.') : 'This puts ' + nm + ' <strong>' + fmt2(will) + ' over</strong> budget.') + '</span><button class="chip" id="sRoom">Make room</button>';
     }
-    $("#sAdd").textContent = amt > 0 ? "Add " + fmt2(amt) + " to " + (subObj && subObj.name ? subObj.name : catLabel(sheetCat)) : "Add";
+    $("#sAdd").textContent = sheetEdit ? "Save changes" : amt > 0 ? "Add " + fmt2(amt) + " to " + (subObj && subObj.name ? subObj.name : catLabel(sheetCat)) : "Add";
   }
-  function openSheet(cat, sub, from){
+  function openSheet(cat, sub, from, edit){
     if(!spendCats().length){ toast("Add a category on the Plan tab first."); showView("plan"); return; }
+    sheetEdit = edit || null;
     sheetCat = cat && spendCats().indexOf(cat) > -1 ? cat : firstSpend();
     catTouched = !!cat; sheetSub = sub || null; sheetReturn = from || document.activeElement;
-    $("#sAmount").value = ""; fitAmount(); sheetDate = todayStr(); $("#sName").value = ""; $("#sErr").textContent = "";
+    $("#sAmount").value = edit ? num(edit.amount).toFixed(2) : ""; fitAmount(); sheetDate = edit ? edit.date : todayStr(); $("#sName").value = edit ? (edit.name || "") : ""; $("#sErr").textContent = "";
     renderRecents(); renderSheet(); closeTip();
     $("#backdrop").classList.add("open"); $("#sheet").classList.add("open"); $("#main").inert = true;
     $("#sAmount").focus({ preventScroll:true });
@@ -2038,15 +2073,38 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var amount = sheetAmt();
     if(amount <= 0){ $("#sErr").textContent = "Enter an amount."; $("#sAmount").focus(); return; }
     var name = $("#sName").value.trim(), subObj = sheetSub ? findSub(sheetCat, sheetSub) : null;
+    if(sheetEdit) return saveEdit(amount, name, subObj);
     state.log.push({ id:uid(), ts:Date.now(), date:sheetDate, amount:amount, cat:sheetCat, sub:subObj ? subObj.id : null, subName:subObj ? subObj.name : "", name:name, note:"" });
     if(name) state.rules[mKey(name)] = sheetCat;
     save(); closeSheet(); update();
     toast("Added " + fmt2(amount) + " to " + (subObj && subObj.name ? subObj.name : segName(sheetCat)) + ".");
   }
+  // Once you change an automatic entry it's yours: it stops following the bill or plan, and that month isn't refilled.
+  function detachAuto(e, skips){ if(!e.auto) return; skipAuto(e, skips); delete e.auto; delete e.rec; }
+  function saveEdit(amount, name, subObj){
+    var e = state.log.find(function(x){ return x.id === sheetEdit.id; });
+    if(!e){ closeSheet(); return; }
+    var sid = subObj ? subObj.id : null;
+    var changed = e.date !== sheetDate || Math.abs(num(e.amount) - amount) > 0.004 || e.cat !== sheetCat || (e.sub || null) !== sid || (e.name || "") !== name;
+    closeSheet();
+    if(!changed) return;
+    var before = JSON.parse(JSON.stringify(e)), skips = [];
+    detachAuto(e, skips);
+    e.date = sheetDate; e.amount = amount; e.cat = sheetCat; e.sub = sid; e.subName = subObj ? subObj.name : ""; e.name = name;
+    if(name) state.rules[mKey(name)] = sheetCat;
+    save(); update();
+    toast("Saved " + fmt2(amount) + (monthOf(before.date) !== monthOf(e.date) ? " in " + monthName(monthOf(e.date)) : "") + ".", "Undo", function(){
+      skips.forEach(function(k){ delete state.autoSkips[k]; });
+      var i = state.log.findIndex(function(x){ return x.id === before.id; });
+      if(i > -1) state.log[i] = before; else state.log.push(before);
+      save(); update();
+    });
+  }
   $("#sAdd").addEventListener("click", addEntry);
+  $("#sDel").addEventListener("click", function(){ var id = sheetEdit && sheetEdit.id; closeSheet(); if(id) removeEntries([id]); });
   $("#sOver").addEventListener("click", function(e){
     if(!e.target.closest("#sRoom")) return;
-    openRoom(sheetCat, sheetSub, sheetAmt());
+    openRoom(sheetCat, sheetSub, Math.max(0, sheetExtra()));
   });
 
   /* ---------- receipt scanning ---------- */
@@ -2167,7 +2225,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     rc = { W:W, H:H, lines:[], items:[], active:null, mainCat:firstSpend(), ocrDone:false, date:null, mainTouched:false, info:null };
     $("#rcImg").src = color.toDataURL("image/jpeg", 0.85); $("#rcWrap").hidden = false; $("#rcTitle").textContent = "Receipt";
     var cv = $("#rcCanvas"); cv.width = W; cv.height = H;
-    $("#rcName").value = ""; $("#rcTotal").value = ""; $("#rcItemsBox").hidden = true;
+    $("#rcName").value = ""; $("#rcTotal").value = ""; $("#rcDate").value = todayStr(); $("#rcDel").hidden = true; $("#rcItemsBox").hidden = true;
     $("#rcStatus").hidden = false; $("#rcProg").parentNode.hidden = false; $("#rcStatusText").textContent = "Reading your receipt…"; $("#rcProg").style.width = "6%";
     openModal("#receiptModal"); sizeReceipt(); renderReceipt(); drawItems();
     try{
@@ -2177,7 +2235,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       var info = parseReceipt(lines, H); rc.info = info;
       if(info.name && !$("#rcName").value) $("#rcName").value = info.name;
       if(info.total && !$("#rcTotal").value) $("#rcTotal").value = info.total.toFixed(2);
-      if(info.date) rc.date = info.date;
+      if(info.date){ rc.date = info.date; $("#rcDate").value = info.date; }
       var gc = guessCat($("#rcName").value); if(gc && !rc.mainTouched) rc.mainCat = gc;
       var learned = (state.ocr || {}).items || {}, cats = spendCats(), known = 0;
       rc.items = info.items;
@@ -2195,22 +2253,42 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
   }
   // Itemize by hand: same screen as a scanned receipt, without a photo.
   function startItemize(){
-    var amt = sheetAmt(), name = $("#sName").value.trim(), cat = sheetCat, date = sheetDate;
+    var amt = sheetAmt(), name = $("#sName").value.trim(), cat = sheetCat, date = sheetDate, edit = sheetEdit;
     closeSheet(); rcToken++;
-    rc = { W:1, H:1, lines:[], items:[], active:null, mainCat:segMeta(cat).save ? firstSpend() : cat, ocrDone:true, date:date, mainTouched:false, info:null, manual:true, totalTouched:amt > 0 };
+    rc = { W:1, H:1, lines:[], items:[], active:null, mainCat:segMeta(cat).save ? firstSpend() : cat, ocrDone:true, date:date, mainTouched:false, info:null, manual:true, totalTouched:amt > 0, extra:0,
+      edit:edit ? { ids:[edit.id], group:null, before:[JSON.parse(JSON.stringify(edit))] } : null };
     var it = { id:uid(), name:"", amount:"", raw:"", bbox:null, cat:rc.mainCat, touched:true };
     rc.items.push(it); rc.active = it.id;
     $("#rcTitle").textContent = "Itemize a purchase"; $("#rcWrap").hidden = true;
     $("#rcStatus").hidden = false; $("#rcProg").parentNode.hidden = true;
     $("#rcStatusText").textContent = "Add each item with its price and tap the category it belongs to. If the total is more than the items, the tax and fees get split across the categories.";
-    $("#rcName").value = name; $("#rcTotal").value = amt > 0 ? amt.toFixed(2) : "";
+    $("#rcName").value = name; $("#rcTotal").value = amt > 0 ? amt.toFixed(2) : ""; $("#rcDate").value = date; $("#rcDel").hidden = !edit;
     openModal("#receiptModal"); renderReceipt();
     var f = document.querySelector('#rcItems [data-ik="name"]'); if(f) f.focus({ preventScroll:true });
   }
   $("#itemBtn").addEventListener("click", startItemize);
+  // Reopens a logged receipt (or split purchase) with its items, so any of it can be changed.
+  function editReceipt(group, from){
+    rcToken++;
+    var saved = (group.find(function(x){ return x.items && x.items.length; }) || {}).items;
+    var total = Math.round(group.reduce(function(a, x){ return a + num(x.amount); }, 0) * 100) / 100;
+    var main = group.reduce(function(a, x){ return !a || num(x.amount) > num(a.amount) ? x : a; }, null);
+    var items = saved ? saved.map(function(it){ return { id:uid(), name:it.name || "", amount:num(it.amount), raw:it.raw || "", bbox:null, cat:it.cat, touched:true }; }) :
+      group.map(function(x){ var n = String(x.note || "").split(": ")[1] || segName(x.cat); return { id:uid(), name:n, amount:num(x.amount), raw:"", bbox:null, cat:x.cat, touched:true }; });
+    var itemSum = items.reduce(function(a, it){ return a + Math.max(0, num(it.amount)); }, 0);
+    rc = { W:1, H:1, lines:[], items:items, active:null, mainCat:main.cat, ocrDone:true, date:main.date, mainTouched:true, info:null, manual:true, totalTouched:false,
+      extra:Math.round((total - itemSum) * 100) / 100, ret:from || null,
+      edit:{ ids:group.map(function(x){ return x.id; }), group:main.group || null, before:group.map(function(x){ return JSON.parse(JSON.stringify(x)); }) } };
+    $("#rcTitle").textContent = "Edit purchase"; $("#rcWrap").hidden = true;
+    $("#rcStatus").hidden = false; $("#rcProg").parentNode.hidden = true;
+    $("#rcStatusText").textContent = "Change the store, date, items, prices or categories. " + (rc.extra > 0.004 ? "The " + fmt2(rc.extra) + " in tax and fees stays on top of the items unless you change the total." : "The total follows the items unless you type a new one.");
+    $("#rcName").value = main.name || ""; $("#rcTotal").value = total.toFixed(2); $("#rcDate").value = main.date; $("#rcDel").hidden = false;
+    openModal("#receiptModal"); renderReceipt();
+  }
   function manualTotal(){
     if(!rc || !rc.manual || rc.totalTouched) return;
     var t = rc.items.reduce(function(a, it){ return a + Math.max(0, num(it.amount)); }, 0);
+    if(t > 0) t += rc.extra || 0;
     $("#rcTotal").value = t > 0 ? t.toFixed(2) : "";
   }
   function sizeReceipt(){
@@ -2263,7 +2341,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       el.innerHTML = r.parts.map(function(p){ return '<div class="rcbrk">' + cdot(p.cat) + '<span class="grow">' + esc(catLabel(p.cat)) + (p.items ? ' <small style="color:var(--muted)">' + plural(p.items.length, "item") + '</small>' : '') + '</span><strong>' + fmt2(p.amount) + '</strong></div>'; }).join("") +
         (note ? '<p class="gline' + (r.extra < -0.004 ? ' warn' : '') + '" style="margin-top:8px">' + note + '</p>' : '');
     }
-    $("#rcSave").textContent = total > 0 ? "Log " + fmt2(total) + (r.parts.length > 1 ? " in " + r.parts.length + " categories" : "") : "Log it";
+    $("#rcSave").textContent = rc.edit ? "Save " + fmt2(Math.max(0, total)) + (r.parts.length > 1 ? " in " + r.parts.length + " categories" : "") : total > 0 ? "Log " + fmt2(total) + (r.parts.length > 1 ? " in " + r.parts.length + " categories" : "") : "Log it";
   }
   var drawFrame = 0;
   function drawItems(){
@@ -2339,22 +2417,36 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     rc.items.forEach(function(it){ if(!it.touched && it.cat === old) it.cat = gc; });
     renderReceipt(); drawItems();
   });
+  $("#rcDate").addEventListener("change", function(e){ if(rc && e.target.value) rc.date = e.target.value; });
   $("#rcClose").addEventListener("click", function(){ rcToken++; closeModal("#receiptModal"); });
   $("#rcSave").addEventListener("click", function(){
     var total = rcTotalVal();
     if(total <= 0){ toast("Type the total first."); $("#rcTotal").focus(); return; }
-    var name = $("#rcName").value.trim() || "Receipt", date = rc.date || todayStr(), gid = uid(), parts = rcParts().parts;
+    var ed = rc.edit, name = $("#rcName").value.trim() || (ed && ed.before[0].name) || "Receipt", date = $("#rcDate").value || rc.date || todayStr();
+    var gid = (ed && ed.group) || uid(), parts = rcParts().parts, ts = ed ? ed.before[0].ts || Date.now() : Date.now(), skips = [], added = [];
+    var items = rc.items.filter(function(it){ return num(it.amount) > 0; }).map(function(it){ return { name:it.name || "", amount:Math.round(num(it.amount) * 100) / 100, cat:it.cat, raw:it.raw || "" }; });
+    if(ed) ed.ids.forEach(function(id){ var i = state.log.findIndex(function(x){ return x.id === id; }); if(i > -1){ skipAuto(state.log[i], skips); state.log.splice(i, 1); } });
     parts.forEach(function(p, i){
       var names = (p.items || []).filter(Boolean), note = parts.length > 1 ? "Split receipt" : "Receipt";
       if(names.length) note += ": " + names.slice(0, 3).join(", ") + (names.length > 3 ? " and " + (names.length - 3) + " more" : "");
-      state.log.push({ id:uid(), ts:Date.now() + i, date:date, amount:p.amount, cat:p.cat, name:name, note:note, group:gid });
+      var e = { id:(ed && ed.ids[i]) || uid(), ts:ts + i, date:date, amount:p.amount, cat:p.cat, name:name, note:note, group:gid };
+      if(items.length) e.items = items;
+      state.log.push(e); added.push(e.id);
     });
     var main = parts.reduce(function(a, p){ return !a || p.amount > a.amount ? p : a; }, null);
     state.rules[mKey(name)] = main ? main.cat : rc.mainCat;
     learnReceipt(name, total);
     save(); rcToken++; closeModal("#receiptModal"); update();
-    toast("Logged " + fmt2(total) + " from " + name + (parts.length > 1 ? " in " + parts.length + " categories." : "."));
+    var where = parts.length > 1 ? " in " + parts.length + " categories." : ".";
+    if(!ed) return toast("Logged " + fmt2(total) + " from " + name + where);
+    toast("Saved " + fmt2(total) + " from " + name + where, "Undo", function(){
+      state.log = state.log.filter(function(x){ return added.indexOf(x.id) < 0; });
+      ed.before.forEach(function(x){ state.log.push(x); });
+      skips.forEach(function(k){ delete state.autoSkips[k]; });
+      save(); update();
+    });
   });
+  $("#rcDel").addEventListener("click", function(){ var ed = rc && rc.edit; rcToken++; closeModal("#receiptModal"); if(ed) removeEntries(ed.ids); });
 
   /* ---------- weekly bank check ---------- */
   var WEEK = 7 * 86400000;
