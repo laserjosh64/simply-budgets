@@ -635,6 +635,27 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
         </div>
         <div id="savedList"></div>
       </div>
+
+      <div class="section-row" id="shareSection"><h3>Share and export
+        <button class="info" type="button" aria-label="About seeds" data-tip="A seed is a code that holds your budget setup: your categories, how your pay is split between them, and if you like, your recurring payments and paycheck deductions. Copy it and send it to someone, and they can paste it here to see your setup and use it. A seed never holds your pay, balances, goals, or purchases.">i</button></h3>
+      </div>
+      <div class="card pad">
+        <div class="label-row">Your seed</div>
+        <label class="trow flat"><span class="grow">Include recurring payments</span><input type="checkbox" class="switch" id="seedBills" role="switch" checked></label>
+        <label class="trow flat"><span class="grow">Include paycheck deductions</span><input type="checkbox" class="switch" id="seedDeds" role="switch"></label>
+        <span class="field" style="margin-top:14px"><input id="seedName" placeholder="Name it (optional)" autocomplete="off" maxlength="40" aria-label="Seed name"></span>
+        <div class="dl-row"><button class="btn sm" id="seedCopy">Copy my seed</button><button class="btn soft sm" id="seedShare" hidden>Share a link</button></div>
+        <span class="field" id="seedMineBox" style="margin-top:10px" hidden><textarea id="seedMine" rows="3" readonly aria-label="Your seed"></textarea></span>
+
+        <div class="label-row" style="margin-top:22px">Check a seed</div>
+        <span class="field" style="margin-top:8px"><textarea id="seedIn" rows="3" placeholder="Paste a seed here" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Seed to check"></textarea></span>
+        <div class="dl-row"><button class="btn sm" id="seedCheck">Check it</button></div>
+        <div id="seedOut"></div>
+
+        <div class="label-row" style="margin-top:22px">Download as a spreadsheet</div>
+        <div class="dl-row"><button class="btn soft sm" id="dlAll">Everything (CSV)</button><button class="btn soft sm" id="dlTx2">All purchases (CSV)</button></div>
+        <p class="footnote" style="text-align:left;margin:10px 0 0">Everything holds your pay, deductions, recurring payments, loans, categories, balances, goals, debts, and every purchase. It opens in Excel, Google Sheets, or Numbers.</p>
+      </div>
     </section>
 
     <!-- ACTIVITY -->
@@ -658,6 +679,7 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
           <button class="btn soft sm" id="dlMonths">Monthly totals (CSV)</button>
           <button class="btn soft sm" id="dlTx">All purchases (CSV)</button>
         </div>
+        <div class="dl-row"><button class="btn soft sm" id="dlAll2">Everything (CSV)</button></div>
         <p class="footnote">Downloads open in Excel, Google Sheets, or Numbers. Tap a month to see its purchases.</p>
       </div>
     </section>
@@ -1479,6 +1501,12 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
     var t = e.target;
     if(t.dataset.use){
       var sv = state.saved.find(function(x){ return x.id === t.dataset.use; }); if(!sv) return;
+      if(sv.deds){
+        var snapU = snapshotSetup();
+        applyPlan(sv.plan); state.pay.deductions = JSON.parse(JSON.stringify(sv.deds)); commit(); save(); fillInputs(); renderBills(); renderSplits(); update();
+        toast("Using “" + sv.name + "”.", "Undo", function(){ restoreSetup(snapU); });
+        return;
+      }
       applyPlan(sv.plan); commit(); fillInputs(); renderBills(); renderSplits(); update();
       toast("Using “" + sv.name + "”.", "Undo", revert);
     }
@@ -1618,6 +1646,265 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
       rows.push([e.date, e.name || "", segMeta(e.cat).name, subObj ? subObj.name : (e.subName || ""), e.note || "", money(num(e.amount)), segMeta(e.cat).save ? "Saved" : "Spent"]);
     });
     saveFile("simply-budgets-all-purchases.csv", toCSV(rows));
+  });
+  $("#dlTx2").addEventListener("click", function(){ $("#dlTx").click(); });
+
+  // One sheet with every part of the app, one section per kind of thing.
+  function exportAll(){
+    var c = calc(), L = ledger(), today = todayStr();
+    var freqName = (FREQ_LABELS.find(function(f){ return f[0] === state.pay.freq; }) || ["","Monthly"])[1];
+    var rows = [["Section","Name","Detail","Amount","Date","Note"]];
+    rows.push(["Pay", grossMode() ? "Pay before deductions" : "Take-home pay", freqName, money(num(state.pay.amount)), "", ""]);
+    rows.push(["Pay", "Take-home a month", "", money(c.monthly), "", ""]);
+    deds().forEach(function(d){
+      var g = num(state.pay.amount);
+      rows.push(["Deduction", d.name || "Deduction", d.type === "pct" ? num(d.value) + "% of pay" : "Set amount", money(dedAmount(d, g)), "", isRetire(d) ? "Retirement" : ""]);
+    });
+    P().bills.forEach(function(b){
+      if(b.loan){
+        var r = loanInfo(b);
+        rows.push(["Student loan", b.name || "Student loan", num(b.loan.apr) + "% APR, payment " + money(num(b.amount)) + " a month", money(r.bal), "", "Payment day " + (b.day || 1)]);
+        return;
+      }
+      rows.push(["Recurring payment", b.name || "Payment", isPaycheckBill(b) ? "From paycheck" : "From " + segName(b.from), money(billAmt(b)), "", b.day ? "Day " + b.day : ""]);
+    });
+    splitKeys().forEach(function(k){
+      var m = segMeta(k), how = isFixed(k) ? "Set amount" : (+P().split[k] || 0) + "% of what’s left";
+      var note = m.save ? "Saving" + (m.account ? ", goes into " + (ACCT_NAMES[m.account] || m.account) : "") : ((P().roll || {})[k] ? "Leftovers roll over" : ((P().sweep || {})[k] ? "Leftovers move to " + segName(P().sweep[k].to) : ""));
+      rows.push(["Category", m.name, how, money(c.amt[k] || 0), "", note]);
+      subsOf(k).forEach(function(s){ rows.push(["Sub-goal", s.name || "Sub-goal", "In " + m.name + ", " + (+s.pct || 0) + "%", money(((c.sub[k] || {})[s.id]) || 0), "", s.target ? "Target " + money(num(s.target)) : ""]); });
+    });
+    ACCT_KEYS.forEach(function(k){ if(L.has[k]) rows.push(["Balance", ACCT_NAMES[k], k === "card" ? "Owed" : "", money(L.bal[k]), today, ""]); });
+    (state.goals || []).forEach(function(g){
+      var r = goalCalc(g, c, L);
+      rows.push(["Goal", g.name || "Goal", money(r.have) + " of " + money(r.need), money(r.need), g.date || "", r.line || ""]);
+    });
+    (state.debts || []).forEach(function(d){ rows.push(["Debt", d.name || "Debt", num(d.apr) + "% APR, minimum " + money(num(d.min)), money(L.debts[d.id] != null ? L.debts[d.id] : num(d.owed)), "", ""]); });
+    state.log.slice().sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts || 0) - (b.ts || 0); }).forEach(function(e){
+      var m = segMeta(e.cat), subObj = e.sub ? findSubAny(e.sub) : null;
+      rows.push([m.save ? "Saved" : "Purchase", e.name || "", m.name + (subObj ? " / " + subObj.name : (e.subName ? " / " + e.subName : "")), money(num(e.amount)), e.date, e.note || ""]);
+    });
+    saveFile("simply-budgets-everything-" + today + ".csv", toCSV(rows));
+  }
+  $("#dlAll").addEventListener("click", exportAll);
+  $("#dlAll2").addEventListener("click", exportAll);
+
+  /* ---------- seeds: a code that holds a budget setup ---------- */
+  // Format: SB<v>-<base64url payload>-<5-char check>. v1 is deflate-compressed JSON, v0 is plain JSON.
+  // A seed never holds pay, balances, goals, debts, loans, purchases, or photos.
+  var SEED_KEY_RE = /^(gas|food|personal|savings|emergency|c[a-z0-9]{1,24})$/;
+  var SEED_COLOR_RE = /^(var\(--[a-z]+\)|#[0-9a-fA-F]{3,8})$/;
+  function seedCheck(s){ var h = 2166136261; for(var i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ("00000" + (h >>> 0).toString(36)).slice(-5); }
+  function b64url(u8){ var s = ""; for(var i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+  function unb64url(t){ t = t.replace(/-/g,"+").replace(/_/g,"/"); while(t.length % 4) t += "="; var s = atob(t), u = new Uint8Array(s.length); for(var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+  async function pipeBytes(u8, stream){ return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(stream)).arrayBuffer()); }
+  async function encodeSeed(obj){
+    var raw = new TextEncoder().encode(JSON.stringify(obj)), body = raw, ver = "0";
+    if(typeof CompressionStream === "function"){ try{ body = await pipeBytes(raw, new CompressionStream("deflate-raw")); ver = "1"; }catch(e){ body = raw; ver = "0"; } }
+    var p = b64url(body);
+    return "SB" + ver + "-" + p + "-" + seedCheck(p);
+  }
+  async function decodeSeed(text){
+    var t = String(text || "").trim(), m = t.match(/[#&]seed=([A-Za-z0-9_%-]+)/);
+    if(m){ try{ t = decodeURIComponent(m[1]); }catch(e){} }
+    t = t.replace(/\s+/g, "");
+    if(!t) return { error:"Paste a seed in the box first." };
+    if(t.length > 40000) return { error:"That’s too long to be a seed." };
+    m = t.match(/^SB([01])-([A-Za-z0-9_-]+)-([0-9a-z]{5})$/i);
+    if(!m) return { error:/^SB[01]-/i.test(t) ? "This seed is damaged or cut short. It may not have been copied all the way. Ask for it again." : "That doesn’t look like a seed. A seed starts with SB and has two dashes in it." };
+    if(seedCheck(m[2]) !== m[3].toLowerCase()) return { error:"This seed is damaged or cut short. It may not have been copied all the way. Ask for it again." };
+    try{
+      var u = unb64url(m[2]);
+      if(m[1] === "1"){
+        if(typeof DecompressionStream !== "function") return { error:"This browser is too old to open this seed. Update it and try again." };
+        u = await pipeBytes(u, new DecompressionStream("deflate-raw"));
+      }
+      var clean = cleanSeed(JSON.parse(new TextDecoder().decode(u)));
+      return clean ? { seed:clean, code:t } : { error:"This seed is from a newer version of Simply Budgets, or it’s damaged." };
+    }catch(e){ return { error:"This seed is damaged and can’t be opened." }; }
+  }
+  function seedNum(v, max){ var n = parseFloat(String(v == null ? "" : v).replace(/[^0-9.]/g, "")); if(!isFinite(n) || n < 0) return ""; n = Math.min(n, max == null ? 1e7 : max); return String(Math.round(n * 100) / 100); }
+  function seedStr(v, n){ return String(v == null ? "" : v).replace(/[\u0000-\u001f]/g, "").trim().slice(0, n); }
+  // Everything that comes from a pasted seed passes through here, so nothing unexpected reaches the page or the saved data.
+  function cleanSeed(o){
+    if(!o || typeof o !== "object" || o.v !== 1 || !Array.isArray(o.k)) return null;
+    var out = { v:1, n:seedStr(o.n, 40), k:[], c:{}, sp:{}, fx:{}, ro:[], sw:{}, b:null, dd:null, fq:FREQ[o.fq] ? o.fq : "month" };
+    o.k.slice(0, 30).forEach(function(k){
+      if(typeof k !== "string" || !SEED_KEY_RE.test(k) || out.k.indexOf(k) > -1) return;
+      var src = (o.c && o.c[k]) || {}, base = BUILTIN[k];
+      if(!base && !src.n) return;
+      var cat = { n:seedStr(src.n, 40) || (base ? base.name : "Category"), s:src.s != null ? !!src.s : (base ? base.save : false) };
+      cat.col = typeof src.col === "string" && SEED_COLOR_RE.test(src.col) ? src.col : (base ? base.color : PALETTE[out.k.length % PALETTE.length]);
+      if(src.ic && src.ic.t === "g" && GLYPHS[src.ic.v]) cat.ic = { t:"g", v:src.ic.v };
+      else if(src.ic && src.ic.t === "l" && src.ic.v) cat.ic = { t:"l", v:seedStr(src.ic.v, 2) };
+      else if(base) cat.ic = { t:"g", v:base.g };
+      if(cat.s) cat.a = ["savings","emergency","checking"].indexOf(src.a) > -1 ? src.a : (k === "emergency" ? "emergency" : "savings");
+      out.k.push(k); out.c[k] = cat;
+      if(o.fx && o.fx[k] != null) out.fx[k] = seedNum(o.fx[k]) || "0";
+      else out.sp[k] = Math.round(+seedNum(o.sp && o.sp[k], 100) || 0);
+    });
+    if(!out.k.length) return null;
+    var tot = 0; for(var sk in out.sp) tot += out.sp[sk];
+    if(tot > 100){ var acc = 0, ks = Object.keys(out.sp); ks.forEach(function(k){ out.sp[k] = Math.floor(out.sp[k] * 100 / tot); acc += out.sp[k]; }); }
+    (Array.isArray(o.ro) ? o.ro : []).forEach(function(k){ if(out.k.indexOf(k) > -1 && !out.c[k].s) out.ro.push(k); });
+    if(o.sw && typeof o.sw === "object") Object.keys(o.sw).forEach(function(k){ var to = o.sw[k]; if(out.k.indexOf(k) > -1 && !out.c[k].s && out.ro.indexOf(k) < 0 && out.k.indexOf(to) > -1 && out.c[to].s) out.sw[k] = to; });
+    if(Array.isArray(o.b)) out.b = o.b.slice(0, 50).map(function(b){
+      b = b || {}; var d = Math.round(+b.d);
+      return { n:seedStr(b.n, 60), a:seedNum(b.a), f:out.k.indexOf(b.f) > -1 ? b.f : "paycheck", d:d >= 1 && d <= 31 ? d : null };
+    });
+    if(Array.isArray(o.dd)) out.dd = o.dd.slice(0, 20).map(function(d){
+      d = d || {}; var r = { n:seedStr(d.n, 40), t:d.t === "pct" ? "pct" : "amt", v:seedNum(d.v, d.t === "pct" ? 100 : null) };
+      if(d.r != null) r.r = !!d.r;
+      if(d.m && ["mine","pay","amt"].indexOf(d.m.type) > -1 && seedNum(d.m.value) !== "") r.m = { type:d.m.type, value:seedNum(d.m.value, d.m.type === "amt" ? null : 100) };
+      return r;
+    });
+    return out;
+  }
+  function seedFromMine(withBills, withDeds){
+    var p = P(), keys = splitKeys(), s = { v:1, n:seedStr($("#seedName").value, 40), k:keys, c:{}, sp:{}, fx:{}, ro:[], sw:{} };
+    keys.forEach(function(k){
+      var m = segMeta(k), cat = { n:m.name, s:m.save ? 1 : 0, col:m.color };
+      if(m.icon && !isPhoto(m.icon)) cat.ic = m.icon;
+      if(m.save) cat.a = m.account;
+      s.c[k] = cat;
+      if(isFixed(k)) s.fx[k] = String(num(p.fixed[k])); else s.sp[k] = +p.split[k] || 0;
+      if((p.roll || {})[k]) s.ro.push(k);
+      if((p.sweep || {})[k]) s.sw[k] = p.sweep[k].to;
+    });
+    if(withBills) s.b = p.bills.filter(function(b){ return !b.loan && !b.debt; }).map(function(b){ return { n:b.name || "", a:String(num(b.amount)), f:isPaycheckBill(b) ? "paycheck" : b.from, d:b.day || null }; });
+    if(withDeds){ s.fq = state.pay.freq; s.dd = deds().map(function(d){ var r = { n:d.name || "", t:d.type === "pct" ? "pct" : "amt", v:String(d.value || "") }; if(d.retire != null) r.r = !!d.retire; if(d.match && d.match.value !== "") r.m = { type:d.match.type, value:d.match.value }; return r; }); }
+    return s;
+  }
+  var mySeed = "";
+  $("#seedCopy").addEventListener("click", async function(){
+    if(!splitKeys().length) return toast("Add a category first.");
+    mySeed = await encodeSeed(seedFromMine($("#seedBills").checked, $("#seedDeds").checked));
+    $("#seedMine").value = mySeed; $("#seedMineBox").hidden = false;
+    $("#seedShare").hidden = !navigator.share;
+    var ok = false;
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(mySeed); ok = true; } }catch(e){}
+    if(!ok){ var ta = $("#seedMine"); ta.focus(); ta.select(); try{ ok = document.execCommand("copy"); }catch(e){} }
+    toast(ok ? "Seed copied. Paste it anywhere to share it." : "Here’s your seed. Select it and copy it.");
+  });
+  ["#seedBills","#seedDeds","#seedName"].forEach(function(id){ $(id).addEventListener("input", function(){ $("#seedMineBox").hidden = true; $("#seedShare").hidden = true; mySeed = ""; }); });
+  $("#seedShare").addEventListener("click", async function(){
+    if(!mySeed) return;
+    var url = location.origin + location.pathname + "#seed=" + mySeed;
+    try{ await navigator.share({ title:"My Simply Budgets setup", text:"Here’s my budget setup for Simply Budgets. Open the link, or paste this seed under Plan, Check a seed:\n" + mySeed, url:url }); }catch(e){}
+  });
+
+  // Matches each category in a seed to one of yours with the same name, or makes a new one,
+  // so your past purchases keep the category names they had.
+  function seedKeyMap(seed){
+    var map = {}, mine = Object.keys(BUILTIN).concat(Object.keys(state.segDefs)).filter(function(k, i, a){ return k !== "bills" && a.indexOf(k) === i; });
+    var used = {};
+    seed.k.forEach(function(k){
+      var want = seed.c[k].n.toLowerCase();
+      var hit = mine.find(function(x){ return !used[x] && segMeta(x).name.toLowerCase() === want; });
+      if(!hit && !BUILTIN[k] && !state.segDefs[k] && !used[k]) hit = k;
+      if(!hit) hit = "c" + uid();
+      used[hit] = 1; map[k] = hit;
+    });
+    return map;
+  }
+  function seedTakeCats(seed, map){
+    seed.k.forEach(function(k){
+      var nk = map[k], c = seed.c[k];
+      if(BUILTIN[nk] || state.segDefs[nk]) return; // already yours: keep your look
+      state.segDefs[nk] = { name:c.n, color:c.col, icon:c.ic || null, save:c.s };
+      if(c.s) state.segDefs[nk].account = c.a;
+    });
+  }
+  function seedPlan(seed, map){
+    var p = P(), plan = defaultPlan();
+    plan.keys = seed.k.map(function(k){ return map[k]; });
+    plan.customs = plan.keys.filter(function(k){ return !BUILTIN[k]; });
+    plan.split = {}; plan.fixed = {}; plan.roll = {}; plan.sweep = {};
+    plan.subs = JSON.parse(JSON.stringify(p.subs || {}));
+    seed.k.forEach(function(k){
+      var nk = map[k];
+      if(seed.fx[k] != null) plan.fixed[nk] = seed.fx[k]; else plan.split[nk] = seed.sp[k] || 0;
+    });
+    seed.ro.forEach(function(k){ var nk = map[k]; plan.roll[nk] = (p.roll || {})[nk] || thisMonth; });
+    Object.keys(seed.sw).forEach(function(k){ var nk = map[k], old = (p.sweep || {})[nk]; plan.sweep[nk] = { to:map[seed.sw[k]], from:old ? old.from : thisMonth }; });
+    var keep = p.bills.filter(function(b){ return b.loan || b.debt; });
+    plan.bills = seed.b ? seed.b.map(function(b){ return { id:uid(), name:b.n, amount:b.a, from:b.f === "paycheck" ? "paycheck" : map[b.f], day:b.d || undefined, since:thisMonth }; }).concat(JSON.parse(JSON.stringify(keep)))
+                        : JSON.parse(JSON.stringify(p.bills));
+    return plan;
+  }
+  function seedDeds(seed){
+    if(!seed.dd) return null;
+    var ratio = (FREQ[seed.fq] || 1) / (FREQ[state.pay.freq] || 1);
+    return seed.dd.map(function(d){
+      var r = { id:uid(), name:d.n, type:d.t, value:d.t === "amt" && d.v !== "" && ratio !== 1 ? String(Math.round(+d.v * ratio * 100) / 100) : d.v };
+      if(d.r != null) r.retire = d.r;
+      if(d.m) r.match = { type:d.m.type, value:d.m.value };
+      return r;
+    });
+  }
+  function seedPreviewHTML(seed){
+    var c = calc(), monthly = c.monthly, bills = 0;
+    (seed.b || []).forEach(function(b){ if(b.f === "paycheck") bills += num(b.a); });
+    if(!seed.b) bills = P().bills.reduce(function(a, b){ return a + (isPaycheckBill(b) ? billAmt(b) : 0); }, 0);
+    var fixedTot = 0; seed.k.forEach(function(k){ if(seed.fx[k] != null) fixedTot += num(seed.fx[k]); });
+    var left = Math.max(0, monthly - bills - fixedTot), pctTot = 0;
+    var cats = seed.k.map(function(k){
+      var cat = seed.c[k], fixed = seed.fx[k] != null, amt = fixed ? num(seed.fx[k]) : left * (seed.sp[k] || 0) / 100;
+      if(!fixed) pctTot += seed.sp[k] || 0;
+      var how = fixed ? fmtSmart(num(seed.fx[k])) + " a month" : (seed.sp[k] || 0) + "% of what’s left";
+      var extra = cat.s ? "Saving" : seed.ro.indexOf(k) > -1 ? "Leftovers roll over" : seed.sw[k] ? "Leftovers move to " + seed.c[seed.sw[k]].n : "";
+      return '<div class="lrow"><span class="ico" style="--c:' + cat.col + '">' + iconInner(cat.ic, cat.n) + '</span><span class="mid"><strong>' + esc(cat.n) + '</strong><small>' + esc(how + (extra ? ", " + extra.toLowerCase() : "")) + '</small></span>' +
+        (monthly > 0 ? '<span class="right">' + fmt(amt) + '<small>a month</small></span>' : '') + '</div>';
+    }).join("");
+    var bar = '<span class="minibar" style="margin:8px 0 2px">' + seed.k.map(function(k){ var v = seed.fx[k] == null ? seed.sp[k] || 0 : 0; return v ? '<i style="flex:0 0 ' + v + '%;background:' + seed.c[k].col + '"></i>' : ''; }).join("") + '</span>';
+    var html = '<div class="card gap" style="margin-top:14px"><div class="pad" style="padding-bottom:4px"><strong>✓ This seed checks out</strong><small style="display:block;color:var(--muted);margin-top:2px">' +
+      esc((seed.n ? "“" + seed.n + "”, " : "") + seed.k.length + (seed.k.length === 1 ? " category" : " categories") + (seed.b ? ", " + plural(seed.b.length, "recurring payment") : "") + (seed.dd ? ", " + plural(seed.dd.length, "deduction") : "")) + '</small>' + bar + '</div>' + cats;
+    if(seed.b && seed.b.length) html += '<div class="pad" style="padding-bottom:0"><div class="label-row">Recurring payments</div></div>' + seed.b.map(function(b){
+      return '<div class="lrow"><span class="mid"><strong>' + esc(b.n || "Payment") + '</strong><small>' + esc(b.f === "paycheck" ? "From paycheck" : "From " + seed.c[b.f].n) + (b.d ? ", day " + b.d : "") + '</small></span><span class="right">' + fmtSmart(num(b.a)) + '</span></div>'; }).join("");
+    if(seed.dd && seed.dd.length) html += '<div class="pad" style="padding-bottom:0"><div class="label-row">Paycheck deductions</div></div>' + seed.dd.map(function(d){
+      return '<div class="lrow"><span class="mid"><strong>' + esc(d.n || "Deduction") + '</strong></span><span class="right">' + (d.t === "pct" ? esc(d.v || "0") + "%" : fmtSmart(num(d.v))) + '</span></div>'; }).join("");
+    html += '</div>';
+    html += '<p class="footnote" style="text-align:left;margin:10px 2px 0">' + (monthly > 0 ? "Amounts are worked out from your own take-home pay. " : "") +
+      'Using it changes your plan only. Your purchases, balances, goals, debts, and student loans stay as they are, and your current setup is kept under Saved budgets first.</p>';
+    html += '<div class="dl-row"><button class="btn sm" id="seedUse">Use this budget</button><button class="btn soft sm" id="seedKeep">Save for later</button></div>';
+    return html;
+  }
+  var checkedSeed = null, seedUseArmed = false;
+  async function checkSeed(){
+    var res = await decodeSeed($("#seedIn").value);
+    checkedSeed = res.seed || null; seedUseArmed = false;
+    $("#seedOut").innerHTML = res.error ? '<p class="note warn" style="margin-top:12px">' + esc(res.error) + '</p>' : seedPreviewHTML(res.seed);
+  }
+  $("#seedCheck").addEventListener("click", checkSeed);
+  $("#seedIn").addEventListener("input", function(){ if(checkedSeed){ checkedSeed = null; $("#seedOut").innerHTML = ""; } });
+  function snapshotSetup(){ return { plan:JSON.parse(planJSON()), deds:JSON.parse(JSON.stringify(deds())), segDefs:JSON.parse(JSON.stringify(state.segDefs)) }; }
+  function restoreSetup(snap){
+    applyPlan(snap.plan); state.pay.deductions = snap.deds; state.segDefs = snap.segDefs;
+    commit(); save(); fillInputs(); renderBills(); renderSplits(); update();
+  }
+  $("#seedOut").addEventListener("click", function(e){
+    var seed = checkedSeed; if(!seed) return;
+    var label = seed.n || "Shared budget";
+    if(e.target.id === "seedKeep"){
+      var map = seedKeyMap(seed); seedTakeCats(seed, map);
+      var sv = { id:uid(), name:label, ts:Date.now(), plan:seedPlan(seed, map) }, dd = seedDeds(seed);
+      if(dd) sv.deds = dd;
+      state.saved.unshift(sv); save(); renderSaved();
+      toast("Saved “" + label + "” to Saved budgets.");
+    }
+    if(e.target.id === "seedUse"){
+      if(!seedUseArmed){ seedUseArmed = true; e.target.textContent = "Tap again to use it"; e.target.classList.add("armed"); return; }
+      var snap = snapshotSetup(), backup = { id:uid(), name:"Before " + label + " (" + new Date().toLocaleDateString("en-US",{ month:"short", day:"numeric" }) + ")", ts:Date.now(), plan:snap.plan, deds:snap.deds };
+      state.saved.unshift(backup);
+      var map2 = seedKeyMap(seed); seedTakeCats(seed, map2);
+      state.plan = seedPlan(seed, map2);
+      var dd2 = seedDeds(seed); if(dd2) state.pay.deductions = dd2;
+      commit(); save(); fillInputs(); renderBills(); renderSplits(); update();
+      checkedSeed = null; $("#seedOut").innerHTML = ""; $("#seedIn").value = "";
+      toast("Using “" + label + "”. Your old setup is under Saved budgets.", "Undo", function(){
+        restoreSetup(snap); state.saved = state.saved.filter(function(x){ return x.id !== backup.id; }); save(); renderSaved();
+      });
+    }
   });
 
   /* ---------- accounts ---------- */
@@ -3702,6 +3989,16 @@ h1,h2,h3,.big,.bigmoney,.tile .v,.stat strong,.bignum,.amountfield{ font-family:
 
   $("#brandMark").innerHTML = '<svg width="40" height="40" viewBox="0 0 64 64" aria-hidden="true"><g transform="translate(0,0) scale(1.0)"><rect width="64" height="64" rx="15" fill="#1D5C70"/><circle cx="32" cy="32" r="15.5" fill="none" stroke="#F7FAF9" stroke-width="9" stroke-dasharray="47.082 97.389" stroke-dashoffset="0.000" transform="rotate(-90 32 32)"/><circle cx="32" cy="32" r="15.5" fill="none" stroke="#9FD3C7" stroke-width="9" stroke-dasharray="24.413 97.389" stroke-dashoffset="-50.482" transform="rotate(-90 32 32)"/><circle cx="32" cy="32" r="15.5" fill="none" stroke="#E8B04A" stroke-width="9" stroke-dasharray="15.694 97.389" stroke-dashoffset="-78.295" transform="rotate(-90 32 32)"/></g></svg>';
   fillInputs(); renderBills(); renderSplits(); update(); renderInstall(); showView("home");
+  // A shared link (…#seed=SB1-…) opens the seed check on the Plan tab. Nothing changes until the person taps Use.
+  function openSeedLink(){
+    var m = location.hash.match(/^#seed=(.+)$/); if(!m) return;
+    var code = m[1]; try{ code = decodeURIComponent(code); }catch(e){}
+    try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+    showView("plan"); $("#seedIn").value = code;
+    checkSeed().then(function(){ var el = $("#shareSection"); if(el) el.scrollIntoView({ block:"start" }); });
+  }
+  openSeedLink();
+  window.addEventListener("hashchange", openSeedLink);
 })();
 </script>
 </body>

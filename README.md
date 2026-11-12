@@ -20,6 +20,7 @@ It then opens full screen from its own icon and works offline.
 - Goals that read from your accounts and plan: save up, emergency cushion, pay off a debt, or keep a minimum.
 - Debt payoff with the snowball or avalanche method.
 - Presets (50/30/20, pay yourself first, even split), rollover categories, saved budgets, a 3-year savings projection, and a month-by-month spreadsheet you can download.
+- Export everything as a CSV, and share your budget setup with a **seed**: a code you copy and paste. Paste someone else's seed to check it and preview it before using it. Using one keeps your old setup under Saved budgets and never touches your purchases or balances.
 
 ## Privacy
 
